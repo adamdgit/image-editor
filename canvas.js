@@ -16,7 +16,7 @@ const eraserButton = document.querySelector('.eraser-button')
 
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
-const bucket_tolerance = 40; // default 30
+const bucket_tolerance = 40; // default 40
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
 const undone_history = [];
@@ -25,7 +25,6 @@ canvas.width = canvasWrap.clientWidth
 canvas.height = canvasWrap.clientHeight
 
 // inital blank canvas
-// use this function any time you modify the canvas to create a restore point
 add_canvas_history();
 
 fileIn.addEventListener('change', () => {
@@ -44,6 +43,8 @@ fileIn.addEventListener('change', () => {
 
 gsButton.addEventListener('click', () => grayscaleImage());
 sepiaButton.addEventListener('click', () => sepiaImage());
+undoButton.addEventListener('click', () => undo_history());
+redoButton.addEventListener('click', () => redo_history());
 
 canvas.addEventListener('click', (e) => {
   // gets the rgba colour values as array, for a selected pixel
@@ -55,8 +56,6 @@ canvas.addEventListener('click', (e) => {
   spanFill(e.offsetY, e.offsetX, data, "#2fc0e9");
 });
 
-undoButton.addEventListener('click', () => undo_history())
-redoButton.addEventListener('click', () => redo_history())
 
 //----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
@@ -78,7 +77,7 @@ function undo_history() {
 // undo history by reverting to previous top of stack canvas state
 function redo_history() {
   // do nothing if no history to undo
-  if (undone_history.length === 1) return
+  if (undone_history.length === 0) return
 
   // get top of the undone history
   const top = undone_history.pop();
@@ -88,8 +87,14 @@ function redo_history() {
   ctx.putImageData(top, 0, 0)
 }
 
-
+//----- add to canvas history -----//
+// use this function any time you modify the canvas to create a restore point
 function add_canvas_history() {
+  // keep stack at 20 items max, remove from bottom if at 20
+  if (canvas_history.length > 19) {
+    canvas_history.shift();
+  }
+
   // get the current canvas state and save to canvas history stack
   const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
   canvas_history.push(current)
