@@ -19,6 +19,9 @@ const canvas_history = [];
 canvas.width = canvasWrap.clientWidth
 canvas.height = canvasWrap.clientHeight
 
+// inital blank canvas
+add_canvas_history();
+
 fileIn.addEventListener('change', () => {
   const reader = new FileReader()
   const selectedFile = fileIn.files[0]
@@ -26,7 +29,10 @@ fileIn.addEventListener('change', () => {
   if (selectedFile) {
     reader.readAsDataURL(selectedFile)
     reader.onload = selectedFile => image.src = selectedFile.target.result;
-    reader.onloadend = () => ctx.drawImage(image, 0, 0, image.width, image.height)
+    reader.onloadend = () => {
+      ctx.drawImage(image, 0, 0, image.width, image.height)
+      add_canvas_history();
+    }
   }
 })
 
@@ -35,30 +41,37 @@ gsButton.addEventListener('click', () => grayscaleImage());
 canvas.addEventListener('click', (e) => {
   // gets the rgba colour values as array, for a selected pixel
   const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
-  // joins rgba values into single string eg: [0,0,0,0] = "0000"
+
+  // don't paint if selected color is already the same
+  if (data.join("") === "47192233255") return
+
   spanFill(e.offsetY, e.offsetX, data, "#2fc0e9");
 });
 
 document.addEventListener('keypress', (e) => {
   if (e.ctrlKey && e.key === "\u001a") {
-    undo_redo("undo")
+    undo_history()
   }
 });
 
 
 //----- undo / redo -----//
-// uses a stack to store canvas states for each action
-// option: "undo" | "redo"
-function undo_redo(option) {
+// undo history by reverting to previous top of stack canvas state
+function undo_history() {
+  // do nothing if no history to undo
+  if (canvas_history.length === 1) return
+  // remove most recent 
+  const removed = canvas_history.pop();
+  // restore top of the stack
+  const top = canvas_history[canvas_history.length -1];
+  ctx.putImageData(top, 0, 0)
+}
 
-  if (option === "undo") {
 
-  }
-
-  if (option === "redo") {
-
-  }
-
+function add_canvas_history() {
+  // get the current canvas state and save to canvas history stack
+  const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  canvas_history.push(current)
 }
 
 
@@ -103,6 +116,8 @@ function spanFill(x, y, color, newColor) {
     final.data[k] = data[k]; 
   }
   ctx.putImageData(final, 0, 0)
+
+  add_canvas_history();
 }
 
 function scan(lx, rx, y, stack, color, data) {
