@@ -13,7 +13,6 @@ const sepiaButton = document.querySelector('.sepia-button')
 const brushButton = document.querySelector('.brush-button')
 const pencilButton = document.querySelector('.pencil-button')
 const eraserButton = document.querySelector('.eraser-button')
-
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
 const bucket_tolerance = 40; // default 40
@@ -104,9 +103,24 @@ function add_canvas_history() {
 //----- paint bucket fill -----//
 // fills the selected area with a user selected colour
 function spanFill(x, y, color, newColor) {
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const final = ctx.createImageData(canvas.width, canvas.height)
+  const canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = canvasData.data;
   ctx.fillStyle = newColor;
+
+  const visited = [];
+  for (let i = 0; i < canvas.height; i++) {
+    visited.push([])
+  }
+
+  let j = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (j === canvas.height) break;
+    if ((i / 4) % canvas.width === 0 && i !== 0) {
+      j++
+    }
+    visited[j].push(0)
+  }
+  // console.log(visited)
 
   const stack = [[x, y]];
   while (stack.length > 0) {
@@ -115,61 +129,57 @@ function spanFill(x, y, color, newColor) {
     let lx = x;
     while (isValidSquare(lx, y, color, data)) {
       // save image data, to be filled in later
-      data[((lx * canvas.width) * 4) + (y * 4)] = 47;
-      data[((lx * canvas.width) * 4) + (y * 4) +1] = 192;
-      data[((lx * canvas.width) * 4) + (y * 4) +2] = 233;
-      data[((lx * canvas.width) * 4) + (y * 4) +3] = 255;
+      data[((lx * canvas.width + y) * 4)] = 47;
+      data[((lx * canvas.width + y) * 4) +1] = 192;
+      data[((lx * canvas.width + y) * 4) +2] = 233;
+      data[((lx * canvas.width + y) * 4) +3] = 255;
 
       lx -= 1;
     }
 
     let rx = x + 1;
     while (isValidSquare(rx, y, color, data)) {
-      data[((rx * canvas.width) * 4) + (y * 4)] = 47;
-      data[((rx * canvas.width) * 4) + (y * 4) +1] = 192;
-      data[((rx * canvas.width) * 4) + (y * 4) +2] = 233;
-      data[((rx * canvas.width) * 4) + (y * 4) +3] = 255;
+      data[((rx * canvas.width + y) * 4)] = 47;
+      data[((rx * canvas.width + y) * 4) +1] = 192;
+      data[((rx * canvas.width + y) * 4) +2] = 233;
+      data[((rx * canvas.width + y) * 4) +3] = 255;
   
       rx += 1;
     }
-
-    scan(lx, rx-1, y+1, stack, color, data)
-    scan(lx, rx-1, y-1, stack, color, data)
+    
+    scan(lx, rx-1, y+1, stack, color, data, visited)
+    scan(lx, rx-1, y-1, stack, color, data, visited)
   }
 
-  // copy updated data and write to the canvas
-  for (let k = 0; k < final.data.length; k++) {
-    final.data[k] = data[k]; 
-  }
-  ctx.putImageData(final, 0, 0)
-
+  ctx.putImageData(canvasData, 0, 0)
   add_canvas_history();
 }
 
-function scan(lx, rx, y, stack, color, data) {
+function scan(lx, rx, y, stack, color, data, visited) {
   for (let i = lx; i < rx; i++) {
+    // prevent adding checked pixels to the stack, which prevents running extra isValidSquare checks
+    if (i < 0 || y < 0 || visited[i][y]) continue;
+
     if (isValidSquare(i, y, color, data)) {
-        stack.push([i, y]);
+      stack.push([i, y]);
+      visited[i][y] = 1;
     }
   }
 }
 
 // return true or false if a pixel is valid to be flood filled
-function isValidSquare(x, y, color, data2) {
-  if (x < 0 || y < 0) return false
-
-  let currColor = [data2[((x * canvas.width) * 4) + (y * 4)],
-                  data2[((x * canvas.width) * 4) + (y * 4) +1],
-                  data2[((x * canvas.width) * 4) + (y * 4) +2]];
+function isValidSquare(x, y, color, data) {
+  let currColor = [data[((x * canvas.width + y) * 4)],
+                  data[((x * canvas.width + y) * 4) +1],
+                  data[((x * canvas.width + y) * 4) +2]];
 
   // if the selected pixel is within the canvas and within the tolerance return true
-  if (
+  return (
     currColor[0] >= color[0] -bucket_tolerance && currColor[0] <= color[0] +bucket_tolerance
     && currColor[1] >= color[1] -bucket_tolerance && currColor[1] <= color[1] +bucket_tolerance
     && currColor[2] >= color[2] -bucket_tolerance && currColor[2] <= color[2] +bucket_tolerance
-    && x >= 0 && x < canvas.height && y >= 0 && y < canvas.width
-  ) return true
-  else return false
+    && x >= 0 && y >= 0 && x < canvas.height && y < canvas.width
+  )
 }
 
 
