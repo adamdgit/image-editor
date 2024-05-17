@@ -6,6 +6,7 @@ const canvasWrap = document.querySelector('.canvas-wrap');
 
 // toolbar references
 const gsButton = document.querySelector('.gs-button')
+const sepiaButton = document.querySelector('.sepia-button')
 const brushButton = document.querySelector('.brush-button')
 const pencilButton = document.querySelector('.pencil-button')
 const eraserButton = document.querySelector('.eraser-button')
@@ -13,13 +14,14 @@ const eraserButton = document.querySelector('.eraser-button')
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
 const bucket_tolerance = 40; // default 30
-// stores canvas pixel values for each action on a stack for undo/redo
+// stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
 
 canvas.width = canvasWrap.clientWidth
 canvas.height = canvasWrap.clientHeight
 
 // inital blank canvas
+// use this function any time you modify the canvas to create a restore point
 add_canvas_history();
 
 fileIn.addEventListener('change', () => {
@@ -37,6 +39,7 @@ fileIn.addEventListener('change', () => {
 })
 
 gsButton.addEventListener('click', () => grayscaleImage());
+sepiaButton.addEventListener('click', () => sepiaImage());
 
 canvas.addEventListener('click', (e) => {
   // gets the rgba colour values as array, for a selected pixel
@@ -151,10 +154,6 @@ function isValidSquare(x, y, color, data2) {
 // Turns the entire canvas gray-scale
 function grayscaleImage() {
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-  // to create a grayscale version of the image we must get each pixel rgb value
-  // Get the average of the RBG values eg: 255, 152, 170 / 3 =  192 (rounded up)
-
   const grayscaleImage = ctx.createImageData(canvas.width, canvas.height);
 
   // skip every 4 values (rgba) boomer loops ftw
@@ -169,4 +168,33 @@ function grayscaleImage() {
   }
 
   ctx.putImageData(grayscaleImage, 0, 0);
+
+  add_canvas_history();
+}
+
+
+
+//----- sepia tone image -----//
+// Turns the entire canvas gray-scale
+function sepiaImage() {
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const sepiaImage = ctx.createImageData(canvas.width, canvas.height);
+
+  // skip every 4 values (rgba) boomer loops ftw
+  for (let i = 0; i < data.data.length; i += 4) 
+  { 
+    let red = data.data[i];
+    let green = data.data[i + 1];
+    let blue = data.data[i + 2];
+
+    // sepia tone formula
+    sepiaImage.data[i] = Math.min(255, 0.393 * red + 0.769 * green + 0.189 * blue); // r
+    sepiaImage.data[i + 1] = Math.min(255, 0.349 * red + 0.686 * green + 0.168 * blue); // g
+    sepiaImage.data[i + 2] = Math.min(255, 0.272 * red + 0.534 * green + 0.131 * blue); // b
+    sepiaImage.data[i + 3] = 255; // keep alpha as 255
+  }
+
+  ctx.putImageData(sepiaImage, 0, 0);
+
+  add_canvas_history();
 }
