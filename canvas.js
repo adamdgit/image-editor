@@ -5,6 +5,9 @@ const fileIn = document.getElementById('imgInp');
 const canvasWrap = document.querySelector('.canvas-wrap');
 
 // toolbar references
+const undoButton = document.querySelector('.undo-button')
+const redoButton = document.querySelector('.redo-button')
+
 const gsButton = document.querySelector('.gs-button')
 const sepiaButton = document.querySelector('.sepia-button')
 const brushButton = document.querySelector('.brush-button')
@@ -16,6 +19,7 @@ const eraserButton = document.querySelector('.eraser-button')
 const bucket_tolerance = 40; // default 30
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
+const undone_history = [];
 
 canvas.width = canvasWrap.clientWidth
 canvas.height = canvasWrap.clientHeight
@@ -51,22 +55,36 @@ canvas.addEventListener('click', (e) => {
   spanFill(e.offsetY, e.offsetX, data, "#2fc0e9");
 });
 
-document.addEventListener('keypress', (e) => {
-  if (e.ctrlKey && e.key === "\u001a") {
-    undo_history()
-  }
-});
+undoButton.addEventListener('click', () => undo_history())
+redoButton.addEventListener('click', () => redo_history())
 
-
-//----- undo / redo -----//
+//----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
 function undo_history() {
   // do nothing if no history to undo
   if (canvas_history.length === 1) return
-  // remove most recent 
+
+  // remove most recent and save for redo
   const removed = canvas_history.pop();
+  undone_history.push(removed);
+
   // restore top of the stack
   const top = canvas_history[canvas_history.length -1];
+  ctx.putImageData(top, 0, 0)
+}
+
+
+//----- redo canvas history -----//
+// undo history by reverting to previous top of stack canvas state
+function redo_history() {
+  // do nothing if no history to undo
+  if (undone_history.length === 1) return
+
+  // get top of the undone history
+  const top = undone_history.pop();
+  canvas_history.push(top);
+
+  // restore and redo
   ctx.putImageData(top, 0, 0)
 }
 
@@ -173,9 +191,8 @@ function grayscaleImage() {
 }
 
 
-
 //----- sepia tone image -----//
-// Turns the entire canvas gray-scale
+// Turns the entire canvas sepia tone
 function sepiaImage() {
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const sepiaImage = ctx.createImageData(canvas.width, canvas.height);
