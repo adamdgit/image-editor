@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="canvas.js" defer></script>
+</head>
+<body>
+
+  <header>
+    <h1>Set your canvas size:</h1>
+    <div>
+      <label for="width">Width (pixels)</label>
+      <input id="width" type="number">
+  
+      <label for="height">Height (pixels)</label>
+      <input id="height" type="number">
+    </div>
+
+    <div>
+      <label for="ImgInp">Upload Image</label>
+      <input type="file" accept="image/*" id="imgInp">
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar-top">
+      <button>Brush Size</button>
+    </div>
+    <div class="toolbar-left">
+      <button class="gs-button">gray-scale</button>
+      <button>Brush</button>
+      <button>Pencil</button>
+      <button>Eraser</button>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+  </main>
+  
+</body>
+</html>

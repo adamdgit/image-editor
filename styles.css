@@ -1,0 +1,66 @@
+/*-----Adam Demol 2024-----*/
+:root {
+  line-height: 1.5;
+  font-size: 16px;
+  font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+* { margin: 0px; padding: 0px; border: 0px; box-sizing: border-box; }
+*::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+button { cursor: pointer; }
+
+body {
+  background-color: #efefef;
+  color: #111;
+}
+
+header {
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.canvas {
+  position: fixed;
+  border:1px solid #333;
+}
+
+canvas {
+  border: 1px solid;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  grid-template-rows: 50px 1fr;
+  margin: 2rem;
+  background: white;
+  height: 800px;
+  border: 1px solid #ccc;
+  box-shadow: 0 0 8px 0 #999;
+}
+
+.toolbar-top {
+  grid-column: 2;
+  width: 100%;
+  height: 50px;
+}
+
+.toolbar-left {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: red;
+  width: 100px;
+}
+
+.toolbar-left button {
+  height: 40px;
+}
+
+.toolbar-left button:hover {
+  background-color: #333;
+  color: white;
+}
