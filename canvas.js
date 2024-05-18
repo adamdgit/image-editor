@@ -130,15 +130,18 @@ function spanFill(x, y, color, newColor) {
     }
 
     for (const [dx, dy] of directions) {
-      if (x + dx > canvas.height -1 || y + dy > canvas.width -1) continue;
-      if (x + dx < 0 || y + dy < 0) continue; 
+      if (x + dx > canvas.height -1 || y + dy > canvas.width -1 
+          || x + dx < 0 || y + dy < 0) continue;
       if (visited[x + dx][y + dy]) continue;
 
+      const index = ((x + dx) * canvas.width + (y + dy) << 2);
+
       if (isValidSquare(x + dx, y + dy, color, data)) {
-        data[(((x + dx) * canvas.width + (y + dy)) * 4)] = 47;
-        data[(((x + dx) * canvas.width + (y + dy)) * 4) +1] = 192;
-        data[(((x + dx) * canvas.width + (y + dy)) * 4) +2] = 233;
-        data[(((x + dx) * canvas.width + (y + dy)) * 4) +3] = 255;
+        // left shift by 2 is the same as * 4 but faster!
+        data[index] = 47;
+        data[index +1] = 192;
+        data[index +2] = 233;
+        data[index +3] = 255;
         
         stack.push([x + dx, y + dy]);
         visited[x + dx][y + dy] = 1;
@@ -198,7 +201,7 @@ function isValidSquare(x, y, color, data) {
     currColor[0] >= color[0] -bucket_tolerance && currColor[0] <= color[0] +bucket_tolerance
     && currColor[1] >= color[1] -bucket_tolerance && currColor[1] <= color[1] +bucket_tolerance
     && currColor[2] >= color[2] -bucket_tolerance && currColor[2] <= color[2] +bucket_tolerance
-    && x >= 0 && y >= 0 && x < canvas.height && y < canvas.width
+    && x < canvas.height && y < canvas.width
   )
 }
 
