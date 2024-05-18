@@ -1,29 +1,31 @@
+// canvas variables
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const img = document.querySelector("#img");
 const fileIn = document.getElementById('imgInp');
-const canvasWrap = document.querySelector('.canvas-wrap');
+canvas.width = canvas.parentNode.offsetWidth - 140
+canvas.height = 500;
 
-// toolbar references
+// top toolbar 
 const undoButton = document.querySelector('.undo-button')
 const redoButton = document.querySelector('.redo-button')
 
+// side toolbar
 const gsButton = document.querySelector('.gs-button')
 const sepiaButton = document.querySelector('.sepia-button')
+const bucketButton = document.querySelector('.bucket-button')
 const brushButton = document.querySelector('.brush-button')
 const pencilButton = document.querySelector('.pencil-button')
 const eraserButton = document.querySelector('.eraser-button')
+
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
 const bucket_tolerance = 40; // default 40
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
-const undone_history = [];
-let counter = 0;
-canvas.width = canvasWrap.clientWidth
-canvas.height = canvasWrap.clientHeight
+const undone_history = []; // stores undone history for redo function
 
-// inital blank canvas
+// store blank canvas
 add_canvas_history();
 
 fileIn.addEventListener('change', () => {
@@ -52,7 +54,7 @@ canvas.addEventListener('click', (e) => {
   // don't paint if selected color is already the same
   if (data.join("") === "47192233255") return
 
-  spanFill(e.offsetY, e.offsetX, data, "#2fc0e9");
+  bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
 });
 
 
@@ -102,12 +104,19 @@ function add_canvas_history() {
 
 //----- paint bucket fill -----//
 // fills the selected area with a user selected colour
-function spanFill(x, y, color, newColor) {
+function bucket_fill(x, y, color, newColor) {
   const canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = canvasData.data;
   ctx.fillStyle = newColor;
 
   const visited = Array.from({ length: canvas.width }, () => Array(canvas.height).fill(0));
+
+  // colour selected pixel on first run
+  data[((x * canvas.width + y) * 4)] = 47;
+  data[((x * canvas.width + y) * 4) +1] = 192;
+  data[((x * canvas.width + y) * 4) +2] = 233;
+  data[((x * canvas.width + y) * 4) +3] = 255;
+  visited[x][y] = 1;
 
   const directions = [
     [1, 0], // Down
@@ -120,24 +129,15 @@ function spanFill(x, y, color, newColor) {
   while (stack.length > 0) {
     let [x, y] = stack.pop();
 
-    // first iteration only
-    if (stack.length === 0) {
-      data[((x * canvas.width + y) * 4)] = 47;
-      data[((x * canvas.width + y) * 4) +1] = 192;
-      data[((x * canvas.width + y) * 4) +2] = 233;
-      data[((x * canvas.width + y) * 4) +3] = 255;
-      visited[x][y] = 1;
-    }
-
     for (const [dx, dy] of directions) {
-      if (x + dx > canvas.height -1 || y + dy > canvas.width -1 
+      if (x + dx > canvas.height || y + dy > canvas.width 
           || x + dx < 0 || y + dy < 0) continue;
       if (visited[x + dx][y + dy]) continue;
 
+      // left shift by 2 is the same as * 4 but faster!
       const index = ((x + dx) * canvas.width + (y + dy) << 2);
 
       if (isValidSquare(x + dx, y + dy, color, data)) {
-        // left shift by 2 is the same as * 4 but faster!
         data[index] = 47;
         data[index +1] = 192;
         data[index +2] = 233;
@@ -148,50 +148,15 @@ function spanFill(x, y, color, newColor) {
       }
     }
 
-    // let lx = x;
-    // while (isValidSquare(lx, y, color, data)) {
-    //   // save image data, to be filled in later
-    //   data[((lx * canvas.width + y) * 4)] = 47;
-    //   data[((lx * canvas.width + y) * 4) +1] = 192;
-    //   data[((lx * canvas.width + y) * 4) +2] = 233;
-    //   data[((lx * canvas.width + y) * 4) +3] = 255;
-
-    //   lx -= 1;
-    // }
-
-    // let rx = x + 1;
-    // while (isValidSquare(rx, y, color, data)) {
-    //   data[((rx * canvas.width + y) * 4)] = 47;
-    //   data[((rx * canvas.width + y) * 4) +1] = 192;
-    //   data[((rx * canvas.width + y) * 4) +2] = 233;
-    //   data[((rx * canvas.width + y) * 4) +3] = 255;
-  
-    //   rx += 1;
-    // }
-    
-    // scan(lx, rx-1, y+1, stack, color, data, visited)
-    // scan(lx, rx-1, y-1, stack, color, data, visited)
   }
-  console.log(counter)
+
   ctx.putImageData(canvasData, 0, 0)
   add_canvas_history();
 }
 
-function scan(lx, rx, y, stack, color, data, visited) {
-  for (let i = lx; i < rx; i++) {
-    // prevent adding checked pixels to the stack, which prevents running extra isValidSquare checks
-    if (i < 0 || y < 0 || visited[i][y]) continue;
-
-    if (isValidSquare(i, y, color, data)) {
-      stack.push([i, y]);
-      visited[i][y] = 1;
-    }
-  }
-}
 
 // return true or false if a pixel is valid to be flood filled
 function isValidSquare(x, y, color, data) {
-  counter++
   let currColor = [data[((x * canvas.width + y) * 4)],
                   data[((x * canvas.width + y) * 4) +1],
                   data[((x * canvas.width + y) * 4) +2]];
