@@ -52,22 +52,34 @@ undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 
 brushButton.addEventListener('click', (e) => {
+  highlightSelectedTool(e.target);
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
   canvas.addEventListener('pointerdown', handlePointerDown);
 });
 
 pencilButton.addEventListener('click', (e) => {
+  highlightSelectedTool(e.target);
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
   canvas.addEventListener('pointerdown', handlePointerDown);
 });
 
 bucketButton.addEventListener('click', (e) => {
+  highlightSelectedTool(e.target);
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
   canvas.addEventListener('pointerdown', handlePointerDown);
 });
+
+// remove any highlited tools and highlight the selected one
+function highlightSelectedTool(target) {
+  const toolbar_buttons = [...document.querySelector('.toolbar-left').children];
+  toolbar_buttons.forEach(button => {
+      button.classList.remove('selected-tool')
+  })
+  target.classList.add('selected-tool');
+}
 
 
 function handlePointerDown(e) {
@@ -198,7 +210,7 @@ function bucket_fill(x, y, color, newColor) {
       // left shift by 2 is the same as * 4 but faster!
       const index = ((x + dx) * canvas.width + (y + dy) << 2);
 
-      if (isValidSquare(x + dx, y + dy, color, data)) {
+      if (isValidSquare(index, color, data)) {
         data[index] = 47;
         data[index +1] = 192;
         data[index +2] = 233;
@@ -208,26 +220,21 @@ function bucket_fill(x, y, color, newColor) {
         visited[x + dx][y + dy] = 1;
       }
     }
-
   }
 
   ctx.putImageData(canvasData, 0, 0)
-  add_canvas_history();
 }
 
 
 // return true or false if a pixel is valid to be flood filled
-function isValidSquare(x, y, color, data) {
-  let currColor = [data[((x * canvas.width + y) * 4)],
-                  data[((x * canvas.width + y) * 4) +1],
-                  data[((x * canvas.width + y) * 4) +2]];
+function isValidSquare(index, color, data) {
+  let currColor = [data[index], data[index +1], data[index +2]];
 
   // if the selected pixel is within the canvas and within the tolerance return true
   return (
     currColor[0] >= color[0] -bucket_tolerance && currColor[0] <= color[0] +bucket_tolerance
     && currColor[1] >= color[1] -bucket_tolerance && currColor[1] <= color[1] +bucket_tolerance
     && currColor[2] >= color[2] -bucket_tolerance && currColor[2] <= color[2] +bucket_tolerance
-    && x < canvas.height && y < canvas.width
   )
 }
 
