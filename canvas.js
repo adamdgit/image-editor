@@ -54,63 +54,39 @@ redoButton.addEventListener('click', () => redo_history());
 brushButton.addEventListener('click', (e) => {
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
-  create_canvas_listener(e.target.dataset.toolname);
+  canvas.addEventListener('pointerdown', handlePointerDown);
 });
 
 pencilButton.addEventListener('click', (e) => {
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
-  create_canvas_listener(e.target.dataset.toolname);
+  canvas.addEventListener('pointerdown', handlePointerDown);
 });
 
 bucketButton.addEventListener('click', (e) => {
   let toolIndex = tools.indexOf(e.target.dataset.toolname);
   current_tool = tools[toolIndex];
-  create_canvas_listener(e.target.dataset.toolname);
+  canvas.addEventListener('pointerdown', handlePointerDown);
 });
-
-
-// handle event listeners for canvas
-async function create_canvas_listener(type) {
-
-  await remove_all_event_listeners();
-
-  switch (type) {
-    case "brush":
-      canvas.addEventListener('pointerdown', handlePointerDown);
-      break;
-
-    case "bucket":
-      canvas.addEventListener('pointerdown', handleBucketListener);
-      break;
-
-    case "pencil":
-      canvas.addEventListener('pointerdown', handlePointerDown);
-      break;
-
-    default:
-      break;
-  }
-
-}
-
-
-//----- Handling event listeners -----//
-async function remove_all_event_listeners() {
-  return new Promise((resolve) => {
-    canvas.removeEventListener('pointerdown', handlePointerDown);
-    canvas.removeEventListener('pointermove', handlePointerMove);
-    canvas.removeEventListener('pointerup', handlePointerUp);
-    
-    canvas.removeEventListener('pointerdown', handleBucketListener);
-    resolve();
-  })
-}
 
 
 function handlePointerDown(e) {
   canvas.addEventListener('pointermove', handlePointerMove);
   canvas.addEventListener('pointerup', handlePointerUp);
+
+  if (current_tool === "brush") {
+    use_brush(e.offsetX, e.offsetY, 20, "#2fc0e9");
+  }
+
+  if (current_tool === "pencil") {
+    use_pencil(e.offsetX, e.offsetY, 20, "#2fc0e9");
+  }
+
+  if (current_tool === "bucket") {
+    const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
+    if (data.join("") === "47192233255") return
+    bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
+  }
 }
 
 function handlePointerMove(e) {
@@ -127,12 +103,6 @@ function handlePointerUp() {
   canvas.removeEventListener('pointermove', handlePointerMove);
   // add undo point after mouseup
   add_canvas_history();
-}
-
-function handleBucketListener(e) {
-  const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
-  if (data.join("") === "47192233255") return
-  bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
 }
 
 
