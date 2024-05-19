@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const img = document.querySelector("#img");
 const fileIn = document.getElementById('imgInp');
 canvas.width = canvas.parentNode.offsetWidth - 140
-canvas.height = 500;
+canvas.height = 700;
 
 // top toolbar 
 const undoButton = document.querySelector('.undo-button')
@@ -17,6 +17,10 @@ const bucketButton = document.querySelector('.bucket-button')
 const brushButton = document.querySelector('.brush-button')
 const pencilButton = document.querySelector('.pencil-button')
 const eraserButton = document.querySelector('.eraser-button')
+
+// currently selected tool and tool options
+const tools = ["brush", "pencil", "eraser", "bucket"];
+let current_tool = tools[0];
 
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
@@ -40,22 +44,96 @@ fileIn.addEventListener('change', () => {
       add_canvas_history();
     }
   }
-})
+});
 
 gsButton.addEventListener('click', () => grayscaleImage());
 sepiaButton.addEventListener('click', () => sepiaImage());
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 
-canvas.addEventListener('click', (e) => {
-  // gets the rgba colour values as array, for a selected pixel
-  const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
-
-  // don't paint if selected color is already the same
-  if (data.join("") === "47192233255") return
-
-  bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
+brushButton.addEventListener('click', (e) => {
+  let toolIndex = tools.indexOf(e.target.dataset.toolname);
+  current_tool = tools[toolIndex];
+  create_canvas_listener(e.target.dataset.toolname);
 });
+
+pencilButton.addEventListener('click', (e) => {
+  let toolIndex = tools.indexOf(e.target.dataset.toolname);
+  current_tool = tools[toolIndex];
+  create_canvas_listener(e.target.dataset.toolname);
+});
+
+bucketButton.addEventListener('click', (e) => {
+  let toolIndex = tools.indexOf(e.target.dataset.toolname);
+  current_tool = tools[toolIndex];
+  create_canvas_listener(e.target.dataset.toolname);
+});
+
+
+// handle event listeners for canvas
+async function create_canvas_listener(type) {
+
+  await remove_all_event_listeners();
+
+  switch (type) {
+    case "brush":
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      break;
+
+    case "bucket":
+      canvas.addEventListener('pointerdown', handleBucketListener);
+      break;
+
+    case "pencil":
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      break;
+
+    default:
+      break;
+  }
+
+}
+
+
+//----- Handling event listeners -----//
+async function remove_all_event_listeners() {
+  return new Promise((resolve) => {
+    canvas.removeEventListener('pointerdown', handlePointerDown);
+    canvas.removeEventListener('pointermove', handlePointerMove);
+    canvas.removeEventListener('pointerup', handlePointerUp);
+    
+    canvas.removeEventListener('pointerdown', handleBucketListener);
+    resolve();
+  })
+}
+
+
+function handlePointerDown(e) {
+  canvas.addEventListener('pointermove', handlePointerMove);
+  canvas.addEventListener('pointerup', handlePointerUp);
+}
+
+function handlePointerMove(e) {
+  if (current_tool === "brush") {
+    use_brush(e.offsetX, e.offsetY, 20, "#2fc0e9");
+  }
+
+  if (current_tool === "pencil") {
+    use_pencil(e.offsetX, e.offsetY, 20, "#2fc0e9");
+  }
+}
+
+function handlePointerUp() {
+  canvas.removeEventListener('pointermove', handlePointerMove);
+  // add undo point after mouseup
+  add_canvas_history();
+}
+
+function handleBucketListener(e) {
+  const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
+  if (data.join("") === "47192233255") return
+  bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
+}
 
 
 //----- undo canvas history -----//
@@ -99,6 +177,19 @@ function add_canvas_history() {
   // get the current canvas state and save to canvas history stack
   const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
   canvas_history.push(current)
+}
+
+
+function use_brush(x, y, radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, 2 * Math.PI);
+  ctx.fill();
+}
+
+function use_pencil(x, y, radius, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, 1, 1);
 }
 
 
