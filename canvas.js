@@ -13,6 +13,7 @@ let canvasWidth = canvas.width;
 const colorPicker = document.getElementById("colorpicker");
 const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
+const brushSizeButton = document.querySelector('.brushsize');
 
 // side toolbar
 const gsButton = document.querySelector('.gs-button');
@@ -56,6 +57,11 @@ gsButton.addEventListener('click', () => grayscaleImage());
 sepiaButton.addEventListener('click', () => sepiaImage());
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
+
+
+brushSizeButton.addEventListener('change', (e) => {
+  console.log(e.target.value)
+});
 
 colorPicker.addEventListener('change', (e) => {
   const hex = e.target.value;
@@ -192,14 +198,15 @@ function bucket_fill(x, y, color) {
   const canvasData = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
   const data = canvasData.data;
 
-  const visited = Array.from({ length: canvasWidth }, () => Array(canvasHeight).fill(0));
+  // 1D array to store 0 if not visited, or 1 if a pixel is visited
+  const visited = new Uint8ClampedArray(canvasWidth * canvasHeight);
 
   // colour selected pixel on first run
   data[((x * canvasWidth + y) * 4)] = current_color[0];
   data[((x * canvasWidth + y) * 4) +1] = current_color[1];
   data[((x * canvasWidth + y) * 4) +2] = current_color[2];
   data[((x * canvasWidth + y) * 4) +3] = 255;
-  visited[x][y] = 1;
+  visited[x * canvasWidth + y] = 1;
 
   const directions = [
     [1, 0], // Down
@@ -215,12 +222,11 @@ function bucket_fill(x, y, color) {
     for (const [dx, dy] of directions) {
       let newX = x + dx;
       let newY = y + dy; 
-      if (newX > canvasHeight || newY > canvasWidth 
-          || newX < 0 || newY < 0) continue;
-      if (visited[newX][newY]) continue;
+      if (newX > canvasHeight || newY > canvasWidth || newX < 0 || newY < 0) continue;
+      if (visited[newX * canvasWidth + newY]) continue;
 
       // left shift by 2 is the same as * 4 but faster!
-      let index = ((newX) * canvasWidth + (newY) << 2);
+      let index = (newX * canvasWidth + newY) << 2;
 
       if (isValidPixel(index, color, data)) {
         data[index] = current_color[0];    // r
@@ -228,8 +234,8 @@ function bucket_fill(x, y, color) {
         data[index +2] = current_color[2]; // b
         data[index +3] = 255; // a
         
-        stack.push([x + dx, y + dy]);
-        visited[newX][newY] = 1;
+        stack.push([newX, newY]);
+        visited[newX * canvasWidth + newY] = 1;
       }
     }
   }
@@ -269,7 +275,6 @@ function grayscaleImage() {
   }
 
   ctx.putImageData(grayscaleImage, 0, 0);
-
   add_canvas_history();
 }
 
@@ -295,6 +300,5 @@ function sepiaImage() {
   }
 
   ctx.putImageData(sepiaImage, 0, 0);
-
   add_canvas_history();
 }

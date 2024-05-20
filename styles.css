@@ -129,3 +129,13 @@ canvas:hover {
   background-color: #333;
   color: white;
 }
+
+.toolbar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.toolbar-container input {
+  cursor: pointer;
+}
