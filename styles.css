@@ -48,6 +48,7 @@ canvas:hover {
   align-items: center;
   justify-content: center;
   grid-column: 2;
+  gap: 10px;
   width: 100%;
   height: 80px;
   border-bottom: 1px solid #999;
@@ -64,6 +65,10 @@ canvas:hover {
   height: 100%;
   width: 100%;
   background-color: #ededed;
+}
+
+.toolbar-left svg {
+  pointer-events: none;
 }
 
 .toolbar-left button {

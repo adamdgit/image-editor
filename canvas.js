@@ -3,24 +3,30 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const img = document.querySelector("#img");
 const fileIn = document.getElementById('imgInp');
-canvas.width = canvas.parentNode.offsetWidth - 140
-canvas.height = 700;
 
-// top toolbar 
-const undoButton = document.querySelector('.undo-button')
-const redoButton = document.querySelector('.redo-button')
+canvas.width = canvas.parentNode.offsetWidth - 140;
+canvas.height = 700;
+let canvasHeight = canvas.height;
+let canvasWidth = canvas.width;
+
+// top toolbar
+const colorPicker = document.getElementById("colorpicker");
+const undoButton = document.querySelector('.undo-button');
+const redoButton = document.querySelector('.redo-button');
 
 // side toolbar
-const gsButton = document.querySelector('.gs-button')
-const sepiaButton = document.querySelector('.sepia-button')
-const bucketButton = document.querySelector('.bucket-button')
-const brushButton = document.querySelector('.brush-button')
-const pencilButton = document.querySelector('.pencil-button')
-const eraserButton = document.querySelector('.eraser-button')
+const gsButton = document.querySelector('.gs-button');
+const sepiaButton = document.querySelector('.sepia-button');
+const bucketButton = document.querySelector('.bucket-button');
+const brushButton = document.querySelector('.brush-button');
+const pencilButton = document.querySelector('.pencil-button');
+const eraserButton = document.querySelector('.eraser-button');
 
 // currently selected tool and tool options
 const tools = ["brush", "pencil", "eraser", "bucket"];
 let current_tool = tools[0];
+let current_color = [0, 0, 0, 255];
+let tool_size = 10;
 
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
@@ -50,6 +56,13 @@ gsButton.addEventListener('click', () => grayscaleImage());
 sepiaButton.addEventListener('click', () => sepiaImage());
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
+
+colorPicker.addEventListener('change', (e) => {
+  const hex = e.target.value;
+  // convert hex to rgb
+  current_color = ['0x' + hex[1] + hex[2] | 0, '0x' + hex[3] + hex[4] | 0, '0x' + hex[5] + hex[6] | 0, 255];
+  ctx.fillStyle = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
+})
 
 brushButton.addEventListener('click', (e) => {
   highlightSelectedTool(e.target);
@@ -87,27 +100,27 @@ function handlePointerDown(e) {
   canvas.addEventListener('pointerup', handlePointerUp);
 
   if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY, 20, "#2fc0e9");
+    use_brush(e.offsetX, e.offsetY, 20);
   }
 
   if (current_tool === "pencil") {
-    use_pencil(e.offsetX, e.offsetY, 20, "#2fc0e9");
+    use_pencil(e.offsetX, e.offsetY);
   }
 
   if (current_tool === "bucket") {
     const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
-    if (data.join("") === "47192233255") return
-    bucket_fill(e.offsetY, e.offsetX, data, "#2fc0e9");
+    if (data.join("") === current_color.join("")) return
+    bucket_fill(e.offsetY, e.offsetX, data);
   }
 }
 
 function handlePointerMove(e) {
   if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY, 20, "#2fc0e9");
+    use_brush(e.offsetX, e.offsetY, 20);
   }
 
   if (current_tool === "pencil") {
-    use_pencil(e.offsetX, e.offsetY, 20, "#2fc0e9");
+    use_pencil(e.offsetX, e.offsetY);
   }
 }
 
@@ -157,38 +170,35 @@ function add_canvas_history() {
   }
 
   // get the current canvas state and save to canvas history stack
-  const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
   canvas_history.push(current)
 }
 
 
-function use_brush(x, y, radius, color) {
-  ctx.fillStyle = color;
+function use_brush(x, y, radius) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, 2 * Math.PI);
   ctx.fill();
 }
 
-function use_pencil(x, y, radius, color) {
-  ctx.fillStyle = color;
+function use_pencil(x, y) {
   ctx.fillRect(x, y, 1, 1);
 }
 
 
 //----- paint bucket fill -----//
 // fills the selected area with a user selected colour
-function bucket_fill(x, y, color, newColor) {
-  const canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+function bucket_fill(x, y, color) {
+  const canvasData = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
   const data = canvasData.data;
-  ctx.fillStyle = newColor;
 
-  const visited = Array.from({ length: canvas.width }, () => Array(canvas.height).fill(0));
+  const visited = Array.from({ length: canvasWidth }, () => Array(canvasHeight).fill(0));
 
   // colour selected pixel on first run
-  data[((x * canvas.width + y) * 4)] = 47;
-  data[((x * canvas.width + y) * 4) +1] = 192;
-  data[((x * canvas.width + y) * 4) +2] = 233;
-  data[((x * canvas.width + y) * 4) +3] = 255;
+  data[((x * canvasWidth + y) * 4)] = current_color[0];
+  data[((x * canvasWidth + y) * 4) +1] = current_color[1];
+  data[((x * canvasWidth + y) * 4) +2] = current_color[2];
+  data[((x * canvasWidth + y) * 4) +3] = 255;
   visited[x][y] = 1;
 
   const directions = [
@@ -203,21 +213,23 @@ function bucket_fill(x, y, color, newColor) {
     let [x, y] = stack.pop();
 
     for (const [dx, dy] of directions) {
-      if (x + dx > canvas.height || y + dy > canvas.width 
-          || x + dx < 0 || y + dy < 0) continue;
-      if (visited[x + dx][y + dy]) continue;
+      let newX = x + dx;
+      let newY = y + dy; 
+      if (newX > canvasHeight || newY > canvasWidth 
+          || newX < 0 || newY < 0) continue;
+      if (visited[newX][newY]) continue;
 
       // left shift by 2 is the same as * 4 but faster!
-      const index = ((x + dx) * canvas.width + (y + dy) << 2);
+      let index = ((newX) * canvasWidth + (newY) << 2);
 
-      if (isValidSquare(index, color, data)) {
-        data[index] = 47;
-        data[index +1] = 192;
-        data[index +2] = 233;
-        data[index +3] = 255;
+      if (isValidPixel(index, color, data)) {
+        data[index] = current_color[0];    // r
+        data[index +1] = current_color[1]; // g
+        data[index +2] = current_color[2]; // b
+        data[index +3] = 255; // a
         
         stack.push([x + dx, y + dy]);
-        visited[x + dx][y + dy] = 1;
+        visited[newX][newY] = 1;
       }
     }
   }
@@ -227,7 +239,7 @@ function bucket_fill(x, y, color, newColor) {
 
 
 // return true or false if a pixel is valid to be flood filled
-function isValidSquare(index, color, data) {
+function isValidPixel(index, color, data) {
   let currColor = [data[index], data[index +1], data[index +2]];
 
   // if the selected pixel is within the canvas and within the tolerance return true
@@ -242,8 +254,8 @@ function isValidSquare(index, color, data) {
 //----- gray scale image -----//
 // Turns the entire canvas gray-scale
 function grayscaleImage() {
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const grayscaleImage = ctx.createImageData(canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  const grayscaleImage = ctx.createImageData(canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
   for (let i = 0; i < data.data.length; i += 4) 
@@ -265,8 +277,8 @@ function grayscaleImage() {
 //----- sepia tone image -----//
 // Turns the entire canvas sepia tone
 function sepiaImage() {
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const sepiaImage = ctx.createImageData(canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  const sepiaImage = ctx.createImageData(canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
   for (let i = 0; i < data.data.length; i += 4) 
