@@ -36,7 +36,36 @@ h3 {
 .divider2 {
   width: 100%;
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 140px 1fr 120px;
+}
+
+.toolbar-right {
+  background-color: rgb(192, 192, 192);
+}
+
+.layers-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.canvas-wrap {
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  padding-block: 2rem;
+}
+
+canvas {
+  box-shadow: 0 5px 10px 0 #ccc;
+  background: conic-gradient(
+  #ebebeb 90deg,
+  #d3d3d3 90deg 180deg,
+  #ebebeb 180deg 270deg,
+  #d3d3d3 270deg
+  );
+  background-repeat: repeat ;
+  background-size: 40px 40px;
+  background-position: top left
 }
 
 canvas:hover {
@@ -138,4 +167,9 @@ canvas:hover {
 
 .toolbar-container input {
   cursor: pointer;
+}
+
+.layer {
+  background-color: rgb(68, 120, 163);
+  padding: 1rem;
 }
