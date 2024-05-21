@@ -4,8 +4,8 @@ const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const img = document.querySelector("#img");
 const fileIn = document.getElementById('imgInp');
 
-canvas.width = canvas.parentNode.offsetWidth - 140;
-canvas.height = 700;
+canvas.width = 500; // size of left and right toolbars
+canvas.height = 500;
 let canvasHeight = canvas.height;
 let canvasWidth = canvas.width;
 
@@ -22,8 +22,11 @@ const bucketButton = document.querySelector('.bucket-button');
 const brushButton = document.querySelector('.brush-button');
 const pencilButton = document.querySelector('.pencil-button');
 const eraserButton = document.querySelector('.eraser-button');
+const addLayerButton = document.querySelector('.add-layer-btn');
+const layerWrapper = document.querySelector('.layers-wrap');
 
-// currently selected tool and tool options
+// options
+const layers = [];
 const tools = ["brush", "pencil", "eraser", "bucket"];
 let current_tool = tools[0];
 let current_color = [0, 0, 0, 255];
@@ -36,8 +39,11 @@ const bucket_tolerance = 40; // default 40
 const canvas_history = [];
 const undone_history = []; // stores undone history for redo function
 
+// INITIALIZE CANVAS
 // store blank canvas
 add_canvas_history();
+// store blank canvas data into the starting layer
+layers.push(ctx.getImageData(0, 0, canvasWidth, canvasHeight));
 
 fileIn.addEventListener('change', () => {
   const reader = new FileReader()
@@ -47,6 +53,10 @@ fileIn.addEventListener('change', () => {
     reader.readAsDataURL(selectedFile)
     reader.onload = selectedFile => image.src = selectedFile.target.result;
     reader.onloadend = () => {
+      canvas.height = image.height;
+      canvas.width = image.width;
+      canvasHeight = image.height;
+      canvasWidth = image.width;
       ctx.drawImage(image, 0, 0, image.width, image.height)
       add_canvas_history();
     }
@@ -58,9 +68,15 @@ sepiaButton.addEventListener('click', () => sepiaImage());
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 
+addLayerButton.addEventListener('click', (e) => {
+  console.log(e.target);
+  const newLayer = document.createElement('div');
+  newLayer.classList.add("layer")
+  layerWrapper.appendChild(newLayer);
+});
 
 brushSizeButton.addEventListener('change', (e) => {
-  console.log(e.target.value)
+  console.log(e.target.value);
 });
 
 colorPicker.addEventListener('change', (e) => {
@@ -68,28 +84,20 @@ colorPicker.addEventListener('change', (e) => {
   // convert hex to rgb
   current_color = ['0x' + hex[1] + hex[2] | 0, '0x' + hex[3] + hex[4] | 0, '0x' + hex[5] + hex[6] | 0, 255];
   ctx.fillStyle = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
-})
-
-brushButton.addEventListener('click', (e) => {
-  highlightSelectedTool(e.target);
-  let toolIndex = tools.indexOf(e.target.dataset.toolname);
-  current_tool = tools[toolIndex];
-  canvas.addEventListener('pointerdown', handlePointerDown);
 });
 
-pencilButton.addEventListener('click', (e) => {
-  highlightSelectedTool(e.target);
-  let toolIndex = tools.indexOf(e.target.dataset.toolname);
-  current_tool = tools[toolIndex];
-  canvas.addEventListener('pointerdown', handlePointerDown);
-});
+// adds event listener for canvas events
+canvas.addEventListener('pointerdown', handlePointerDown);
 
-bucketButton.addEventListener('click', (e) => {
-  highlightSelectedTool(e.target);
-  let toolIndex = tools.indexOf(e.target.dataset.toolname);
+brushButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+pencilButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+bucketButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+
+function updateSelectedTool(target) {
+  highlightSelectedTool(target);
+  let toolIndex = tools.indexOf(target.dataset.toolname);
   current_tool = tools[toolIndex];
-  canvas.addEventListener('pointerdown', handlePointerDown);
-});
+}
 
 // remove any highlited tools and highlight the selected one
 function highlightSelectedTool(target) {
@@ -136,6 +144,50 @@ function handlePointerUp() {
   add_canvas_history();
 }
 
+//----- draw layers on canvas -----//
+function handleLayers() {
+  const temp1 = {
+    topLeft: [0,0],
+    bottomRight: [2,2],
+    data: [231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255]
+  };
+  const temp2 = {
+    topLeft: [1,1],
+    bottomRight: [3,3],
+    data: [100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]
+  };
+
+  const layers_stack = [];
+
+  const combinedData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  const data = combinedData.data;
+
+  // bottom layer first, top layer last, and build the combined array
+  // starting at the top (first layer)
+  layers_stack.push(temp2);
+  layers_stack.push(temp1);
+
+  while (layers_stack.length > 0) {
+    // top layer
+    let top = layers_stack.pop(); 
+    let startIndex = top.topLeft[0] * top.topLeft[1] * 4;
+    // copy the layer data to the combined layer data
+    for (let j = startIndex; j < data.length; j += 4) {
+        // every 4 is rgba of a pixel, check if the top.data is transparent
+        // only add non transparent rgba values to the combined data.
+        let rgba = [top.data[j], top.data[j +1], top.data[j +2], top.data[j +3]].join("")
+        if (rgba === '0000') continue; // 0000 = transparent
+
+        data[j] = top.data[j];
+        data[j +1] = top.data[j +1];
+        data[j +2] = top.data[j +2];
+        data[j +3] = top.data[j +3];
+    }
+  }
+  console.log(combinedData.data)
+  ctx.putImageData(combinedData, 0, 0)
+}
+
 
 //----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
@@ -176,8 +228,8 @@ function add_canvas_history() {
   }
 
   // get the current canvas state and save to canvas history stack
-  const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
-  canvas_history.push(current)
+  const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  canvas_history.push(current);
 }
 
 
