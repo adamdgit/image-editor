@@ -1,10 +1,11 @@
 // canvas variables
+const canvasLayers = document.querySelector('.canvas-layers');
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d", { willReadFrequently: true });
-const img = document.querySelector("#img");
+let ctx = canvas.getContext("2d", { willReadFrequently: true });
 const fileIn = document.getElementById('imgInp');
 
-canvas.width = 500; // size of left and right toolbars
+canvas.dataset.layerId = 0;
+canvas.width = 500;
 canvas.height = 500;
 let canvasHeight = canvas.height;
 let canvasWidth = canvas.width;
@@ -14,6 +15,7 @@ const colorPicker = document.getElementById("colorpicker");
 const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
 const brushSizeButton = document.querySelector('.brushsize');
+brushSizeButton.value = 10;
 
 // side toolbar
 const gsButton = document.querySelector('.gs-button');
@@ -44,7 +46,14 @@ const undone_history = []; // stores undone history for redo function
 add_canvas_history();
 // store blank canvas data into the starting layer
 layers.push(ctx.getImageData(0, 0, canvasWidth, canvasHeight));
+// append inital layer to layers wrapper
+const newLayer = document.createElement('div');
+newLayer.dataset.layerId = 0;
+newLayer.classList.add("layer")
+newLayer.innerHTML = 0;
+layerWrapper.appendChild(newLayer);
 
+// Handle file upload
 fileIn.addEventListener('change', () => {
   const reader = new FileReader()
   const selectedFile = fileIn.files[0]
@@ -68,16 +77,32 @@ sepiaButton.addEventListener('click', () => sepiaImage());
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 
+// layerWrapper.addEventListener('')
+
 addLayerButton.addEventListener('click', (e) => {
-  console.log(e.target);
+  const layerId = layerWrapper.children.length;
   const newLayer = document.createElement('div');
-  newLayer.classList.add("layer")
+  // layer id's match the layer to the canvas
+  newLayer.dataset.layerId = layerId;
+  newLayer.classList.add("layer");
+  newLayer.innerHTML = layerId;
+
+  // add listeners to each new layer
+  newLayer.addEventListener('click', (e) => update_selected_layer(e));
   layerWrapper.appendChild(newLayer);
+
+  // create new canvas
+  const newCanvas = document.createElement('canvas');
+  newCanvas.dataset.layerId = layerId;
+  newCanvas.height = canvasHeight;
+  newCanvas.width = canvasWidth;
+  newCanvas.style.pointerEvents = 'none';
+
+  newCanvas.addEventListener('pointerdown', handlePointerDown);
+  canvasLayers.prepend(newCanvas);
 });
 
-brushSizeButton.addEventListener('change', (e) => {
-  console.log(e.target.value);
-});
+brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
 
 colorPicker.addEventListener('change', (e) => {
   const hex = e.target.value;
@@ -110,11 +135,13 @@ function highlightSelectedTool(target) {
 
 
 function handlePointerDown(e) {
-  canvas.addEventListener('pointermove', handlePointerMove);
-  canvas.addEventListener('pointerup', handlePointerUp);
+  [...canvasLayers.children].forEach(canvas => {
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+  });
 
   if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY, 20);
+    use_brush(e.offsetX, e.offsetY);
   }
 
   if (current_tool === "pencil") {
@@ -130,7 +157,7 @@ function handlePointerDown(e) {
 
 function handlePointerMove(e) {
   if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY, 20);
+    use_brush(e.offsetX, e.offsetY);
   }
 
   if (current_tool === "pencil") {
@@ -139,54 +166,71 @@ function handlePointerMove(e) {
 }
 
 function handlePointerUp() {
-  canvas.removeEventListener('pointermove', handlePointerMove);
+  [...canvasLayers.children].forEach(canvas => {
+    canvas.removeEventListener('pointermove', handlePointerMove);
+  });
+
   // add undo point after mouseup
   add_canvas_history();
 }
 
-//----- draw layers on canvas -----//
-function handleLayers() {
-  const temp1 = {
-    topLeft: [0,0],
-    bottomRight: [2,2],
-    data: [231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255]
-  };
-  const temp2 = {
-    topLeft: [1,1],
-    bottomRight: [3,3],
-    data: [100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]
-  };
-
-  const layers_stack = [];
-
-  const combinedData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-  const data = combinedData.data;
-
-  // bottom layer first, top layer last, and build the combined array
-  // starting at the top (first layer)
-  layers_stack.push(temp2);
-  layers_stack.push(temp1);
-
-  while (layers_stack.length > 0) {
-    // top layer
-    let top = layers_stack.pop(); 
-    let startIndex = top.topLeft[0] * top.topLeft[1] * 4;
-    // copy the layer data to the combined layer data
-    for (let j = startIndex; j < data.length; j += 4) {
-        // every 4 is rgba of a pixel, check if the top.data is transparent
-        // only add non transparent rgba values to the combined data.
-        let rgba = [top.data[j], top.data[j +1], top.data[j +2], top.data[j +3]].join("")
-        if (rgba === '0000') continue; // 0000 = transparent
-
-        data[j] = top.data[j];
-        data[j +1] = top.data[j +1];
-        data[j +2] = top.data[j +2];
-        data[j +3] = top.data[j +3];
+// Updates the CTX to the selected canvas
+function update_selected_layer(e) {
+  // remove pointer events for all children except the selected canvas
+  [...canvasLayers.children].forEach(canvas => {
+    if (canvas.dataset.layerId === e.target.dataset.layerId) {
+      canvas.style.pointerEvents = 'all';
+      // switch context whenever we select a new layer to be the default
+      ctx = canvas.getContext("2d", { willReadFrequently: true });
+    } else {
+      canvas.style.pointerEvents = 'none';
     }
-  }
-  console.log(combinedData.data)
-  ctx.putImageData(combinedData, 0, 0)
+  });
 }
+
+//----- draw layers on canvas -----//
+// function handleLayers() {
+//   const temp1 = {
+//     topLeft: [0,0],
+//     bottomRight: [2,2],
+//     data: [231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255]
+//   };
+//   const temp2 = {
+//     topLeft: [1,1],
+//     bottomRight: [3,3],
+//     data: [100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]
+//   };
+
+//   const layers_stack = [];
+
+//   const combinedData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+//   const data = combinedData.data;
+
+//   // bottom layer first, top layer last, and build the combined array
+//   // starting at the top (first layer)
+//   layers_stack.push(temp2);
+//   layers_stack.push(temp1);
+
+//   while (layers_stack.length > 0) {
+//     // top layer
+//     let top = layers_stack.pop(); 
+//     let startIndex = top.topLeft[0] * top.topLeft[1] * 4;
+//     // copy the layer data to the combined layer data
+//     for (let j = startIndex; j < data.length; j += 4) {
+//         // every 4 is rgba of a pixel, check if the top.data is transparent
+//         // only add non transparent rgba values to the combined data.
+//         let rgba = [top.data[j], top.data[j +1], top.data[j +2], top.data[j +3]].join("")
+//         if (rgba === '0000') continue; // 0000 = transparent
+
+//         data[j] = top.data[j];
+//         data[j +1] = top.data[j +1];
+//         data[j +2] = top.data[j +2];
+//         data[j +3] = top.data[j +3];
+//     }
+//   }
+//   console.log(combinedData.data)
+//   ctx.putImageData(combinedData, 0, 0)
+// }
 
 
 //----- undo canvas history -----//
@@ -233,14 +277,14 @@ function add_canvas_history() {
 }
 
 
-function use_brush(x, y, radius) {
+function use_brush(x, y) {
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, 2 * Math.PI);
+  ctx.arc(x, y, tool_size, 0, 2 * Math.PI);
   ctx.fill();
 }
 
 function use_pencil(x, y) {
-  ctx.fillRect(x, y, 1, 1);
+  ctx.fillRect(x - (tool_size / 2), y - (tool_size / 2), tool_size, tool_size);
 }
 
 
