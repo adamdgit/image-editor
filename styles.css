@@ -180,3 +180,8 @@ canvas:hover {
   background-color: rgb(68, 120, 163);
   padding: 1rem;
 }
+
+.current-layer {
+  border: 2px solid #333;
+  background-color: rgb(124 165 199);
+}

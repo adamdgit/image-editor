@@ -49,9 +49,12 @@ layers.push(ctx.getImageData(0, 0, canvasWidth, canvasHeight));
 // append inital layer to layers wrapper
 const newLayer = document.createElement('div');
 newLayer.dataset.layerId = 0;
-newLayer.classList.add("layer")
+newLayer.classList.add("layer", "current-layer")
 newLayer.innerHTML = 0;
+newLayer.addEventListener('click', (e) => update_selected_layer(e));
 layerWrapper.appendChild(newLayer);
+// END INITITALIZE DEFAULT SETTINGS
+
 
 // Handle file upload
 fileIn.addEventListener('change', () => {
@@ -116,6 +119,7 @@ canvas.addEventListener('pointerdown', handlePointerDown);
 
 brushButton.addEventListener('click', (e) => updateSelectedTool(e.target));
 pencilButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+eraserButton.addEventListener('click', (e) => updateSelectedTool(e.target));
 bucketButton.addEventListener('click', (e) => updateSelectedTool(e.target));
 
 function updateSelectedTool(target) {
@@ -140,13 +144,9 @@ function handlePointerDown(e) {
     canvas.addEventListener('pointerup', handlePointerUp);
   });
 
-  if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY);
-  }
-
-  if (current_tool === "pencil") {
-    use_pencil(e.offsetX, e.offsetY);
-  }
+  if (current_tool === "brush") use_brush(e.offsetX, e.offsetY);
+  if (current_tool === "pencil") use_pencil(e.offsetX, e.offsetY);
+  if (current_tool === "eraser") use_eraser(e.offsetX, e.offsetY);
 
   if (current_tool === "bucket") {
     const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
@@ -156,13 +156,9 @@ function handlePointerDown(e) {
 }
 
 function handlePointerMove(e) {
-  if (current_tool === "brush") {
-    use_brush(e.offsetX, e.offsetY);
-  }
-
-  if (current_tool === "pencil") {
-    use_pencil(e.offsetX, e.offsetY);
-  }
+  if (current_tool === "brush") use_brush(e.offsetX, e.offsetY);
+  if (current_tool === "pencil") use_pencil(e.offsetX, e.offsetY);
+  if (current_tool === "eraser") use_eraser(e.offsetX, e.offsetY);
 }
 
 function handlePointerUp() {
@@ -176,6 +172,12 @@ function handlePointerUp() {
 
 // Updates the CTX to the selected canvas
 function update_selected_layer(e) {
+  // add and remove selected class
+  [...layerWrapper.children].forEach(layer => {
+    layer.classList.remove('current-layer');
+  });
+  e.target.classList.add('current-layer');
+
   // remove pointer events for all children except the selected canvas
   [...canvasLayers.children].forEach(canvas => {
     if (canvas.dataset.layerId === e.target.dataset.layerId) {
@@ -285,6 +287,10 @@ function use_brush(x, y) {
 
 function use_pencil(x, y) {
   ctx.fillRect(x - (tool_size / 2), y - (tool_size / 2), tool_size, tool_size);
+}
+
+function use_eraser(x, y) {
+  ctx.clearRect(x - (tool_size / 2), y - (tool_size / 2), tool_size, tool_size);
 }
 
 
