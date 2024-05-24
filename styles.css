@@ -36,7 +36,7 @@ h3 {
 .divider2 {
   width: 100%;
   display: grid;
-  grid-template-columns: 140px 1fr 120px;
+  grid-template-columns: 140px 1fr 180px;
 }
 
 .toolbar-right {
@@ -46,6 +46,7 @@ h3 {
 .layers-wrap {
   display: grid;
   gap: 10px;
+  padding: 10px;
 }
 
 .canvas-wrap {
@@ -177,11 +178,19 @@ canvas:hover {
 }
 
 .layer {
-  background-color: rgb(68, 120, 163);
-  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  padding: 10px;
 }
+.layer .layer-text {
+  pointer-events: none;
+}
+.layer button { height: 17px; width: 17px; }
+.layer svg { background: white; }
 
 .current-layer {
   border: 2px solid #333;
-  background-color: rgb(124 165 199);
+  box-shadow: 0 2px 4px #999;
 }
