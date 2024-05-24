@@ -1,16 +1,11 @@
 // canvas variables
 const canvasLayers = document.querySelector('.canvas-layers');
-const canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d", { willReadFrequently: true });
-const fileIn = document.getElementById('imgInp');
-
-canvas.dataset.layerId = 0;
-canvas.width = 500;
-canvas.height = 500;
-let canvasHeight = canvas.height;
-let canvasWidth = canvas.width;
+let ctx = undefined
+let canvasHeight = 500;
+let canvasWidth = 500;
 
 // top toolbar
+const fileIn = document.getElementById('imgInp');
 const colorPicker = document.getElementById("colorpicker");
 const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
@@ -28,11 +23,13 @@ const addLayerButton = document.querySelector('.add-layer-btn');
 const layerWrapper = document.querySelector('.layers-wrap');
 
 // options
-const layers = [];
 const tools = ["brush", "pencil", "eraser", "bucket"];
 let current_tool = tools[0];
 let current_color = [0, 0, 0, 255];
 let tool_size = 10;
+const hide_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"/></svg>'
+const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg>'
+
 
 // paint bucket fill tolerance, 0 means colours must match exactly
 // higher the tolerance allows better results for similar colours
@@ -41,19 +38,12 @@ const bucket_tolerance = 40; // default 40
 const canvas_history = [];
 const undone_history = []; // stores undone history for redo function
 
-// INITIALIZE CANVAS
+//------ INITIALIZE CANVAS ------//
+// append inital layer to layers wrapper
+add_new_layer(layerWrapper);
 // store blank canvas
 add_canvas_history();
-// store blank canvas data into the starting layer
-layers.push(ctx.getImageData(0, 0, canvasWidth, canvasHeight));
-// append inital layer to layers wrapper
-const newLayer = document.createElement('div');
-newLayer.dataset.layerId = 0;
-newLayer.classList.add("layer", "current-layer")
-newLayer.innerHTML = 0;
-newLayer.addEventListener('click', (e) => update_selected_layer(e));
-layerWrapper.appendChild(newLayer);
-// END INITITALIZE DEFAULT SETTINGS
+//------ END INITITALIZE CANVAS ------//
 
 
 // Handle file upload
@@ -70,28 +60,96 @@ fileIn.addEventListener('change', () => {
       canvasHeight = image.height;
       canvasWidth = image.width;
       ctx.drawImage(image, 0, 0, image.width, image.height)
-      add_canvas_history();
+      utils.add_canvas_history(canvas_history, ctx, canvasWidth, canvasHeight);
     }
   }
 });
 
-gsButton.addEventListener('click', () => grayscaleImage());
-sepiaButton.addEventListener('click', () => sepiaImage());
-undoButton.addEventListener('click', () => undo_history());
-redoButton.addEventListener('click', () => redo_history());
+// top toolbar
+brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
+colorPicker.addEventListener('change', (e) => set_current_color(e));
+undoButton.addEventListener('click', () => undo_history(canvas_history, undone_history));
+redoButton.addEventListener('click', () => redo_history(canvas_history, undone_history));
 
-// layerWrapper.addEventListener('')
+// right toolbar
+addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
 
-addLayerButton.addEventListener('click', (e) => {
+// left toolbar
+gsButton.addEventListener('click', () => grayscaleImage(canvasWidth, canvasHeight, canvas_history));
+sepiaButton.addEventListener('click', () => sepiaImage(canvasWidth, canvasHeight));
+
+brushButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+pencilButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+eraserButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+bucketButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+
+
+
+
+//----- draw layers on canvas -----//
+// function handleLayers() {
+//   const temp1 = {
+//     topLeft: [0,0],
+//     bottomRight: [2,2],
+//     data: [231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255]
+//   };
+//   const temp2 = {
+//     topLeft: [1,1],
+//     bottomRight: [3,3],
+//     data: [100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]
+//   };
+
+//   const layers_stack = [];
+
+//   const combinedData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+//   const data = combinedData.data;
+
+//   // bottom layer first, top layer last, and build the combined array
+//   // starting at the top (first layer)
+//   layers_stack.push(temp2);
+//   layers_stack.push(temp1);
+
+//   while (layers_stack.length > 0) {
+//     // top layer
+//     let top = layers_stack.pop(); 
+//     let startIndex = top.topLeft[0] * top.topLeft[1] * 4;
+//     // copy the layer data to the combined layer data
+//     for (let j = startIndex; j < data.length; j += 4) {
+//         // every 4 is rgba of a pixel, check if the top.data is transparent
+//         // only add non transparent rgba values to the combined data.
+//         let rgba = [top.data[j], top.data[j +1], top.data[j +2], top.data[j +3]].join("")
+//         if (rgba === '0000') continue; // 0000 = transparent
+
+//         data[j] = top.data[j];
+//         data[j +1] = top.data[j +1];
+//         data[j +2] = top.data[j +2];
+//         data[j +3] = top.data[j +3];
+//     }
+//   }
+//   console.log(combinedData.data)
+//   ctx.putImageData(combinedData, 0, 0)
+// }
+
+// Adds new canvas and layer element with matching id's
+function add_new_layer(layerWrapper) {
   const layerId = layerWrapper.children.length;
   const newLayer = document.createElement('div');
+
+  if (layerId === 0) {
+    newLayer.classList.add('current-layer')
+  }
+
   // layer id's match the layer to the canvas
   newLayer.dataset.layerId = layerId;
   newLayer.classList.add("layer");
-  newLayer.innerHTML = layerId;
+  newLayer.innerHTML = `
+    <button class='hide-layer-btn'>${hide_svg}</button> 
+      <span class='layer-text'>Layer ${layerId}</span> 
+    <button class='delete-layer-btn'>${remove_svg}</button>
+  `;
 
   // add listeners to each new layer
-  newLayer.addEventListener('click', (e) => update_selected_layer(e));
+  newLayer.addEventListener('click', (e) => update_selected_layer(e, layerWrapper));
   layerWrapper.appendChild(newLayer);
 
   // create new canvas
@@ -101,26 +159,30 @@ addLayerButton.addEventListener('click', (e) => {
   newCanvas.width = canvasWidth;
   newCanvas.style.pointerEvents = 'none';
 
-  newCanvas.addEventListener('pointerdown', handlePointerDown);
+  if (layerId === 0) {
+    newCanvas.classList.add('active-layer');
+    newCanvas.style.pointerEvents = 'all';
+  }
+
+  newCanvas.addEventListener('pointerdown', (e) => handlePointerDown(e));
   canvasLayers.prepend(newCanvas);
-});
+}
 
-brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
-
-colorPicker.addEventListener('change', (e) => {
-  const hex = e.target.value;
+function set_current_color(e) {
+  const canvasLayers = document.querySelector('.canvas-layers');
   // convert hex to rgb
-  current_color = ['0x' + hex[1] + hex[2] | 0, '0x' + hex[3] + hex[4] | 0, '0x' + hex[5] + hex[6] | 0, 255];
-  ctx.fillStyle = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
-});
-
-// adds event listener for canvas events
-canvas.addEventListener('pointerdown', handlePointerDown);
-
-brushButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-pencilButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-eraserButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-bucketButton.addEventListener('click', (e) => updateSelectedTool(e.target));
+  const hex = e.target.value;
+  current_color[0] = '0x' + hex[1] + hex[2] | 0
+  current_color[1] = '0x' + hex[3] + hex[4] | 0
+  current_color[2] = '0x' + hex[5] + hex[6] | 0
+  current_color[4] = 255;
+  
+  // set all canvas context fillstyles to current color
+  [...canvasLayers.children].forEach(canvas => {
+    canvas.getContext("2d", { willReadFrequently: true }).fillStyle 
+    = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
+  })
+}
 
 function updateSelectedTool(target) {
   highlightSelectedTool(target);
@@ -190,50 +252,6 @@ function update_selected_layer(e) {
   });
 }
 
-//----- draw layers on canvas -----//
-// function handleLayers() {
-//   const temp1 = {
-//     topLeft: [0,0],
-//     bottomRight: [2,2],
-//     data: [231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255, 231,20,38,255]
-//   };
-//   const temp2 = {
-//     topLeft: [1,1],
-//     bottomRight: [3,3],
-//     data: [100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255, 100,100,100,255]
-//   };
-
-//   const layers_stack = [];
-
-//   const combinedData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-//   const data = combinedData.data;
-
-//   // bottom layer first, top layer last, and build the combined array
-//   // starting at the top (first layer)
-//   layers_stack.push(temp2);
-//   layers_stack.push(temp1);
-
-//   while (layers_stack.length > 0) {
-//     // top layer
-//     let top = layers_stack.pop(); 
-//     let startIndex = top.topLeft[0] * top.topLeft[1] * 4;
-//     // copy the layer data to the combined layer data
-//     for (let j = startIndex; j < data.length; j += 4) {
-//         // every 4 is rgba of a pixel, check if the top.data is transparent
-//         // only add non transparent rgba values to the combined data.
-//         let rgba = [top.data[j], top.data[j +1], top.data[j +2], top.data[j +3]].join("")
-//         if (rgba === '0000') continue; // 0000 = transparent
-
-//         data[j] = top.data[j];
-//         data[j +1] = top.data[j +1];
-//         data[j +2] = top.data[j +2];
-//         data[j +3] = top.data[j +3];
-//     }
-//   }
-//   console.log(combinedData.data)
-//   ctx.putImageData(combinedData, 0, 0)
-// }
-
 
 //----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
@@ -273,6 +291,13 @@ function add_canvas_history() {
     canvas_history.shift();
   }
 
+  if (canvas_history.length === 0) {
+    const canvas = document.querySelector('.active-layer');
+    ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+    canvas_history.push(current);
+  }
+
   // get the current canvas state and save to canvas history stack
   const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   canvas_history.push(current);
@@ -280,6 +305,7 @@ function add_canvas_history() {
 
 
 function use_brush(x, y) {
+  console.log("using")
   ctx.beginPath();
   ctx.arc(x, y, tool_size, 0, 2 * Math.PI);
   ctx.fill();
