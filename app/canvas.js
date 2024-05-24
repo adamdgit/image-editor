@@ -3,6 +3,8 @@ const canvasLayers = document.querySelector('.canvas-layers');
 let ctx = undefined
 let canvasHeight = 500;
 let canvasWidth = 500;
+canvasLayers.style.width = `${canvasWidth}px`;
+canvasLayers.style.height = `${canvasHeight}px`;
 
 // top toolbar
 const fileIn = document.getElementById('imgInp');
@@ -305,7 +307,6 @@ function add_canvas_history() {
 
 
 function use_brush(x, y) {
-  console.log("using")
   ctx.beginPath();
   ctx.arc(x, y, tool_size, 0, 2 * Math.PI);
   ctx.fill();
@@ -326,16 +327,6 @@ function bucket_fill(x, y, color) {
   const canvasData = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
   const data = canvasData.data;
 
-  // 1D array to store 0 if not visited, or 1 if a pixel is visited
-  const visited = new Uint8ClampedArray(canvasWidth * canvasHeight);
-
-  // colour selected pixel on first run
-  data[((x * canvasWidth + y) * 4)] = current_color[0];
-  data[((x * canvasWidth + y) * 4) +1] = current_color[1];
-  data[((x * canvasWidth + y) * 4) +2] = current_color[2];
-  data[((x * canvasWidth + y) * 4) +3] = 255;
-  visited[x * canvasWidth + y] = 1;
-
   const directions = [
     [1, 0], // Down
     [-1, 0], // Up
@@ -351,19 +342,18 @@ function bucket_fill(x, y, color) {
       let newX = x + dx;
       let newY = y + dy; 
       if (newX > canvasHeight || newY > canvasWidth || newX < 0 || newY < 0) continue;
-      if (visited[newX * canvasWidth + newY]) continue;
 
       // left shift by 2 is the same as * 4 but faster!
       let index = (newX * canvasWidth + newY) << 2;
+      let currColor = [data[index], data[index +1], data[index +2], data[index +3]];
 
-      if (isValidPixel(index, color, data)) {
+      if (isValidPixel(color, currColor)) {
         data[index] = current_color[0];    // r
         data[index +1] = current_color[1]; // g
         data[index +2] = current_color[2]; // b
-        data[index +3] = 255; // a
+        data[index +3] = current_color[3]; // a
         
         stack.push([newX, newY]);
-        visited[newX * canvasWidth + newY] = 1;
       }
     }
   }
@@ -373,14 +363,13 @@ function bucket_fill(x, y, color) {
 
 
 // return true or false if a pixel is valid to be flood filled
-function isValidPixel(index, color, data) {
-  let currColor = [data[index], data[index +1], data[index +2]];
-
+function isValidPixel(color, currColor) {
   // if the selected pixel is within the canvas and within the tolerance return true
   return (
     currColor[0] >= color[0] -bucket_tolerance && currColor[0] <= color[0] +bucket_tolerance
     && currColor[1] >= color[1] -bucket_tolerance && currColor[1] <= color[1] +bucket_tolerance
     && currColor[2] >= color[2] -bucket_tolerance && currColor[2] <= color[2] +bucket_tolerance
+    && currColor[3] === color[3] // alpha should be equal
   )
 }
 
