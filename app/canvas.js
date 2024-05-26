@@ -1,5 +1,6 @@
 // canvas variables
 const canvasLayers = document.querySelector('.canvas-layers');
+let selected_canvas = undefined;
 let ctx = undefined
 let canvasHeight = 500;
 let canvasWidth = 500;
@@ -15,6 +16,7 @@ const brushSizeButton = document.querySelector('.brushsize');
 brushSizeButton.value = 10;
 
 // side toolbar
+const toolbarLeft = document.querySelector('.toolbar-left');
 const gsButton = document.querySelector('.gs-button');
 const sepiaButton = document.querySelector('.sepia-button');
 const bucketButton = document.querySelector('.bucket-button');
@@ -48,26 +50,8 @@ add_canvas_history();
 //------ END INITITALIZE CANVAS ------//
 
 
-// Handle file upload
-fileIn.addEventListener('change', () => {
-  const reader = new FileReader()
-  const selectedFile = fileIn.files[0]
-  const image = new Image();
-  if (selectedFile) {
-    reader.readAsDataURL(selectedFile)
-    reader.onload = selectedFile => image.src = selectedFile.target.result;
-    reader.onloadend = () => {
-      canvas.height = image.height;
-      canvas.width = image.width;
-      canvasHeight = image.height;
-      canvasWidth = image.width;
-      ctx.drawImage(image, 0, 0, image.width, image.height)
-      utils.add_canvas_history(canvas_history, ctx, canvasWidth, canvasHeight);
-    }
-  }
-});
-
 // top toolbar
+fileIn.addEventListener('change', () => user_image_upload());
 brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
 colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history(canvas_history, undone_history));
@@ -80,12 +64,10 @@ addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
 gsButton.addEventListener('click', () => grayscaleImage(canvasWidth, canvasHeight, canvas_history));
 sepiaButton.addEventListener('click', () => sepiaImage(canvasWidth, canvasHeight));
 
-brushButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-pencilButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-eraserButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-bucketButton.addEventListener('click', (e) => updateSelectedTool(e.target));
-
-
+brushButton.addEventListener('click', (e) => update_selected_tool(e.target));
+pencilButton.addEventListener('click', (e) => update_selected_tool(e.target));
+eraserButton.addEventListener('click', (e) => update_selected_tool(e.target));
+bucketButton.addEventListener('click', (e) => update_selected_tool(e.target));
 
 
 //----- draw layers on canvas -----//
@@ -164,49 +146,17 @@ function add_new_layer(layerWrapper) {
   if (layerId === 0) {
     newCanvas.classList.add('active-layer');
     newCanvas.style.pointerEvents = 'all';
+    newCanvas.addEventListener('pointerdown', handlePointerDown);
+    selected_canvas = newCanvas;
   }
 
-  newCanvas.addEventListener('pointerdown', (e) => handlePointerDown(e));
   canvasLayers.prepend(newCanvas);
-}
-
-function set_current_color(e) {
-  const canvasLayers = document.querySelector('.canvas-layers');
-  // convert hex to rgb
-  const hex = e.target.value;
-  current_color[0] = '0x' + hex[1] + hex[2] | 0
-  current_color[1] = '0x' + hex[3] + hex[4] | 0
-  current_color[2] = '0x' + hex[5] + hex[6] | 0
-  current_color[4] = 255;
-  
-  // set all canvas context fillstyles to current color
-  [...canvasLayers.children].forEach(canvas => {
-    canvas.getContext("2d", { willReadFrequently: true }).fillStyle 
-    = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
-  })
-}
-
-function updateSelectedTool(target) {
-  highlightSelectedTool(target);
-  let toolIndex = tools.indexOf(target.dataset.toolname);
-  current_tool = tools[toolIndex];
-}
-
-// remove any highlited tools and highlight the selected one
-function highlightSelectedTool(target) {
-  const toolbar_buttons = [...document.querySelector('.toolbar-left').children];
-  toolbar_buttons.forEach(button => {
-      button.classList.remove('selected-tool')
-  })
-  target.classList.add('selected-tool');
 }
 
 
 function handlePointerDown(e) {
-  [...canvasLayers.children].forEach(canvas => {
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-  });
+  selected_canvas.addEventListener('pointermove', handlePointerMove);
+  selected_canvas.addEventListener('pointerup', handlePointerUp);
 
   if (current_tool === "brush") use_brush(e.offsetX, e.offsetY);
   if (current_tool === "pencil") use_pencil(e.offsetX, e.offsetY);
@@ -226,13 +176,62 @@ function handlePointerMove(e) {
 }
 
 function handlePointerUp() {
-  [...canvasLayers.children].forEach(canvas => {
-    canvas.removeEventListener('pointermove', handlePointerMove);
-  });
+  selected_canvas.removeEventListener('pointermove', handlePointerMove);
 
   // add undo point after mouseup
   add_canvas_history();
 }
+
+
+// Handle user uploaded images and draw to canvas
+function user_image_upload() {
+  const reader = new FileReader();
+  const selectedFile = fileIn.files[0];
+  const image = new Image();
+  if (selectedFile) {
+    reader.readAsDataURL(selectedFile)
+    reader.onload = selectedFile => image.src = selectedFile.target.result;
+    reader.onloadend = () => {
+      // un-comment if you want to resize canvas to the uploaded image size
+      // selected_canvas.height = image.height;
+      // selected_canvas.width = image.width;
+      ctx.drawImage(image, 0, 0, image.width, image.height)
+      utils.add_canvas_history(canvas_history, ctx, canvasWidth, canvasHeight);
+    }
+  }
+}
+
+// sets the colour of the tools to paint the canvas with (rgb)
+function set_current_color(e) {
+  const canvasLayers = document.querySelector('.canvas-layers');
+  // convert hex to rgb
+  const hex = e.target.value;
+  current_color[0] = '0x' + hex[1] + hex[2] | 0
+  current_color[1] = '0x' + hex[3] + hex[4] | 0
+  current_color[2] = '0x' + hex[5] + hex[6] | 0
+  current_color[4] = 255;
+  
+  // set all canvas context fillstyles to current color
+  [...canvasLayers.children].forEach(canvas => {
+    canvas.getContext("2d", { willReadFrequently: true }).fillStyle 
+    = `rgb(${current_color[0]} ${current_color[1]} ${current_color[2]})`;
+  })
+}
+
+function update_selected_tool(target) {
+  highlight_selected_tool(target);
+  let toolIndex = tools.indexOf(target.dataset.toolname);
+  current_tool = tools[toolIndex];
+}
+
+// remove any highlited tools and highlight the selected one
+function highlight_selected_tool(target) {
+  [...toolbarLeft.children].forEach(button => {
+      button.classList.remove('selected-tool')
+  })
+  target.classList.add('selected-tool');
+}
+
 
 // Updates the CTX to the selected canvas
 function update_selected_layer(e) {
@@ -242,13 +241,19 @@ function update_selected_layer(e) {
   });
   e.target.classList.add('current-layer');
 
+  selected_canvas.removeEventListener('pointerdown', handlePointerDown);
+
   // remove pointer events for all children except the selected canvas
   [...canvasLayers.children].forEach(canvas => {
     if (canvas.dataset.layerId === e.target.dataset.layerId) {
       canvas.style.pointerEvents = 'all';
       // switch context whenever we select a new layer to be the default
       ctx = canvas.getContext("2d", { willReadFrequently: true });
+      selected_canvas = canvas;
+      selected_canvas.addEventListener('pointerdown', handlePointerDown);
     } else {
+      // remove pointer events and event listeners for non selected layers
+      canvas.removeEventListener('pointerdown', handlePointerDown);
       canvas.style.pointerEvents = 'none';
     }
   });
