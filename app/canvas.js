@@ -344,13 +344,14 @@ function bucket_fill(x, y, color) {
     for (const [dx, dy] of directions) {
       let newX = x + dx;
       let newY = y + dy; 
+      // pixel co-ord is within canvas bounds
       if (newX > canvasHeight || newY > canvasWidth || newX < 0 || newY < 0) continue;
 
       // left shift by 2 is the same as * 4 but faster!
       // *4 because every 4 values in the data array is the rgba of 1 pixel
       let index = (newX * canvasWidth + newY) << 2;
 
-      if (isValidPixel(color, data[index], data[index +1], data[index +2], data[index +3])) {
+      if (pixel_color_is_valid(color, data[index], data[index +1], data[index +2], data[index +3])) {
         data[index] = current_color[0];    // r
         data[index +1] = current_color[1]; // g
         data[index +2] = current_color[2]; // b
@@ -366,7 +367,7 @@ function bucket_fill(x, y, color) {
 
 
 // return true or false if a pixel is valid to be flood filled
-function isValidPixel(color, r, g, b, a) {
+function pixel_color_is_valid(color, r, g, b, a) {
   // if the selected pixel is within the canvas and within the tolerance return true
   return (
     r >= color[0] -fill_tolerance && r <= color[0] +fill_tolerance
