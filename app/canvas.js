@@ -2,8 +2,8 @@
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas = undefined;
 let ctx = undefined
-let canvasHeight = 500;
-let canvasWidth = 500;
+let canvasHeight = 900;
+let canvasWidth = 1600;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -31,13 +31,11 @@ const tools = ["brush", "pencil", "eraser", "bucket"];
 let current_tool = tools[0];
 let current_color = [0, 0, 0, 255];
 let tool_size = 10;
-const hide_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"/></svg>'
-const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg>'
+const hide_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"/></svg>';
+const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg>';
+// 0 = RGB values must match completely, higher means RGB values can vary to get better fill results
+const fill_tolerance = 40;
 
-
-// paint bucket fill tolerance, 0 means colours must match exactly
-// higher the tolerance allows better results for similar colours
-const bucket_tolerance = 40; // default 40
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
 const undone_history = []; // stores undone history for redo function
@@ -349,10 +347,10 @@ function bucket_fill(x, y, color) {
       if (newX > canvasHeight || newY > canvasWidth || newX < 0 || newY < 0) continue;
 
       // left shift by 2 is the same as * 4 but faster!
+      // *4 because every 4 values in the data array is the rgba of 1 pixel
       let index = (newX * canvasWidth + newY) << 2;
-      let currColor = [data[index], data[index +1], data[index +2], data[index +3]];
 
-      if (isValidPixel(color, currColor)) {
+      if (isValidPixel(color, data[index], data[index +1], data[index +2], data[index +3])) {
         data[index] = current_color[0];    // r
         data[index +1] = current_color[1]; // g
         data[index +2] = current_color[2]; // b
@@ -368,13 +366,13 @@ function bucket_fill(x, y, color) {
 
 
 // return true or false if a pixel is valid to be flood filled
-function isValidPixel(color, currColor) {
+function isValidPixel(color, r, g, b, a) {
   // if the selected pixel is within the canvas and within the tolerance return true
   return (
-    currColor[0] >= color[0] -bucket_tolerance && currColor[0] <= color[0] +bucket_tolerance
-    && currColor[1] >= color[1] -bucket_tolerance && currColor[1] <= color[1] +bucket_tolerance
-    && currColor[2] >= color[2] -bucket_tolerance && currColor[2] <= color[2] +bucket_tolerance
-    && currColor[3] === color[3] // alpha should be equal
+    r >= color[0] -fill_tolerance && r <= color[0] +fill_tolerance
+    && g >= color[1] -fill_tolerance && g <= color[1] +fill_tolerance
+    && b >= color[2] -fill_tolerance && b <= color[2] +fill_tolerance
+    && a === color[3] // alpha should be equal
   )
 }
 
