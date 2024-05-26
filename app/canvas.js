@@ -38,7 +38,7 @@ const fill_tolerance = 40;
 
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
-const undone_history = []; // stores undone history for redo function
+let history_index = 0;
 
 //------ INITIALIZE CANVAS ------//
 // append inital layer to layers wrapper
@@ -51,8 +51,8 @@ add_canvas_history();
 fileIn.addEventListener('change', () => user_image_upload());
 brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
 colorPicker.addEventListener('change', (e) => set_current_color(e));
-undoButton.addEventListener('click', () => undo_history(canvas_history, undone_history));
-redoButton.addEventListener('click', () => redo_history(canvas_history, undone_history));
+undoButton.addEventListener('click', () => undo_history());
+redoButton.addEventListener('click', () => redo_history());
 
 // right toolbar
 addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
@@ -254,31 +254,28 @@ function update_selected_layer(e) {
 //----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
 function undo_history() {
-  // do nothing if no history to undo
-  if (canvas_history.length === 1) return
+  // index can't be less than 0
+  if (history_index === 0) return;
 
-  // remove most recent and save for redo
-  const removed = canvas_history.pop();
-  undone_history.push(removed);
+  history_index --;
 
   // restore top of the stack
-  const top = canvas_history[canvas_history.length -1];
-  ctx.putImageData(top, 0, 0)
+  const current = canvas_history[history_index];
+  ctx.putImageData(current, 0, 0);
 }
 
 
 //----- redo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
 function redo_history() {
-  // do nothing if no history to undo
-  if (undone_history.length === 0) return
+  // index can't be greater than the array length
+  if (history_index === canvas_history.length -1) return;
+
+  history_index ++;
 
   // get top of the undone history
-  const top = undone_history.pop();
-  canvas_history.push(top);
-
-  // restore and redo
-  ctx.putImageData(top, 0, 0)
+  const current = canvas_history[history_index];
+  ctx.putImageData(current, 0, 0);
 }
 
 //----- add to canvas history -----//
@@ -289,16 +286,16 @@ function add_canvas_history() {
     canvas_history.shift();
   }
 
-  if (canvas_history.length === 0) {
-    const canvas = document.querySelector('.active-layer');
-    ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-    canvas_history.push(current);
+  if (canvas_history.length > 0) {
+    history_index ++;
   }
 
+  const canvas = document.querySelector('.active-layer');
+  ctx = canvas.getContext("2d", { willReadFrequently: true });
   // get the current canvas state and save to canvas history stack
   const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   canvas_history.push(current);
+  console.log(canvas_history)
 }
 
 
