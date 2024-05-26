@@ -1,9 +1,9 @@
 // canvas variables
 const canvasLayers = document.querySelector('.canvas-layers');
-let selected_canvas = undefined;
+let selected_canvas = undefined; // initial canvas will be created later
 let ctx = undefined
-let canvasHeight = 900;
-let canvasWidth = 1600;
+let canvasHeight = 500;
+let canvasWidth = 500;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -47,7 +47,6 @@ add_new_layer(layerWrapper);
 add_canvas_history();
 //------ END INITITALIZE CANVAS ------//
 
-
 // top toolbar
 fileIn.addEventListener('change', () => user_image_upload());
 brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
@@ -59,8 +58,8 @@ redoButton.addEventListener('click', () => redo_history(canvas_history, undone_h
 addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
 
 // left toolbar
-gsButton.addEventListener('click', () => grayscaleImage(canvasWidth, canvasHeight, canvas_history));
-sepiaButton.addEventListener('click', () => sepiaImage(canvasWidth, canvasHeight));
+gsButton.addEventListener('click', () => filter_grayscale(canvasWidth, canvasHeight, canvas_history));
+sepiaButton.addEventListener('click', () => filter_sepia(canvasWidth, canvasHeight));
 
 brushButton.addEventListener('click', (e) => update_selected_tool(e.target));
 pencilButton.addEventListener('click', (e) => update_selected_tool(e.target));
@@ -159,12 +158,7 @@ function handlePointerDown(e) {
   if (current_tool === "brush") use_brush(e.offsetX, e.offsetY);
   if (current_tool === "pencil") use_pencil(e.offsetX, e.offsetY);
   if (current_tool === "eraser") use_eraser(e.offsetX, e.offsetY);
-
-  if (current_tool === "bucket") {
-    const { data } = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
-    if (data.join("") === current_color.join("")) return
-    bucket_fill(e.offsetY, e.offsetX, data);
-  }
+  if (current_tool === "bucket") use_bucket(e.offsetY, e.offsetX);
 }
 
 function handlePointerMove(e) {
@@ -175,7 +169,6 @@ function handlePointerMove(e) {
 
 function handlePointerUp() {
   selected_canvas.removeEventListener('pointermove', handlePointerMove);
-
   // add undo point after mouseup
   add_canvas_history();
 }
@@ -207,7 +200,7 @@ function set_current_color(e) {
   current_color[0] = '0x' + hex[1] + hex[2] | 0
   current_color[1] = '0x' + hex[3] + hex[4] | 0
   current_color[2] = '0x' + hex[5] + hex[6] | 0
-  current_color[4] = 255;
+  current_color[3] = 255;
   
   // set all canvas context fillstyles to current color
   [...canvasLayers.children].forEach(canvas => {
@@ -326,7 +319,11 @@ function use_eraser(x, y) {
 
 //----- paint bucket fill -----//
 // fills the selected area with a user selected colour
-function bucket_fill(x, y, color) {
+function use_bucket(x, y) {
+  const { data: selectedColor } = ctx.getImageData(x, y, 1, 1);
+  // if selected pixel is the same as the current color, early return
+  if (selectedColor.join("") === current_color.join("")) return;
+
   const canvasData = ctx.getImageData(0, 0, canvasWidth, canvasHeight)
   const data = canvasData.data;
 
@@ -351,7 +348,7 @@ function bucket_fill(x, y, color) {
       // *4 because every 4 values in the data array is the rgba of 1 pixel
       let index = (newX * canvasWidth + newY) << 2;
 
-      if (pixel_color_is_valid(color, data[index], data[index +1], data[index +2], data[index +3])) {
+      if (pixel_color_is_valid(selectedColor, data[index], data[index +1], data[index +2], data[index +3])) {
         data[index] = current_color[0];    // r
         data[index +1] = current_color[1]; // g
         data[index +2] = current_color[2]; // b
@@ -368,7 +365,6 @@ function bucket_fill(x, y, color) {
 
 // return true or false if a pixel is valid to be flood filled
 function pixel_color_is_valid(color, r, g, b, a) {
-  // if the selected pixel is within the canvas and within the tolerance return true
   return (
     r >= color[0] -fill_tolerance && r <= color[0] +fill_tolerance
     && g >= color[1] -fill_tolerance && g <= color[1] +fill_tolerance
@@ -380,7 +376,7 @@ function pixel_color_is_valid(color, r, g, b, a) {
 
 //----- gray scale image -----//
 // Turns the entire canvas gray-scale
-function grayscaleImage() {
+function filter_grayscale() {
   const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const grayscaleImage = ctx.createImageData(canvasWidth, canvasHeight);
 
@@ -402,7 +398,7 @@ function grayscaleImage() {
 
 //----- sepia tone image -----//
 // Turns the entire canvas sepia tone
-function sepiaImage() {
+function filter_sepia() {
   const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const sepiaImage = ctx.createImageData(canvasWidth, canvasHeight);
 
