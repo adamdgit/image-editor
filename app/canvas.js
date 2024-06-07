@@ -2,8 +2,8 @@
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas = undefined; // initial canvas will be created later
 let ctx = undefined
-let canvasHeight = 500;
-let canvasWidth = 500;
+let canvasHeight = 1000;
+let canvasWidth = 1700;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -19,6 +19,7 @@ brushSizeButton.value = 10;
 const toolbarLeft = document.querySelector('.toolbar-left');
 const gsButton = document.querySelector('.gs-button');
 const sepiaButton = document.querySelector('.sepia-button');
+const mirrorHButton = document.querySelector('.mirrorh-button');
 const bucketButton = document.querySelector('.bucket-button');
 const brushButton = document.querySelector('.brush-button');
 const pencilButton = document.querySelector('.pencil-button');
@@ -60,6 +61,7 @@ addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale(canvasWidth, canvasHeight, canvas_history));
 sepiaButton.addEventListener('click', () => filter_sepia(canvasWidth, canvasHeight));
+mirrorHButton.addEventListener('click', () => mirror_image_horizontal());
 
 brushButton.addEventListener('click', (e) => update_selected_tool(e.target));
 pencilButton.addEventListener('click', (e) => update_selected_tool(e.target));
@@ -187,7 +189,7 @@ function user_image_upload() {
       // selected_canvas.height = image.height;
       // selected_canvas.width = image.width;
       ctx.drawImage(image, 0, 0, image.width, image.height)
-      utils.add_canvas_history(canvas_history, ctx, canvasWidth, canvasHeight);
+      add_canvas_history(canvas_history, ctx, canvasWidth, canvasHeight);
     }
   }
 }
@@ -289,13 +291,7 @@ function add_canvas_history() {
     canvas_history.shift();
   }
 
-  if (canvas_history.length === 0) {
-    const canvas = document.querySelector('.active-layer');
-    ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-    canvas_history.push(current);
-  }
-
+  ctx = selected_canvas.getContext("2d", { willReadFrequently: true });
   // get the current canvas state and save to canvas history stack
   const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   canvas_history.push(current);
@@ -352,7 +348,7 @@ function use_bucket(x, y) {
         data[index] = current_color[0];    // r
         data[index +1] = current_color[1]; // g
         data[index +2] = current_color[2]; // b
-        data[index +3] = current_color[3]; // a
+        data[index +3] = 255; // a
         
         stack.push([newX, newY]);
       }
@@ -377,14 +373,14 @@ function pixel_color_is_valid(color, r, g, b, a) {
 //----- gray scale image -----//
 // Turns the entire canvas gray-scale
 function filter_grayscale() {
-  const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  const { data } = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const grayscaleImage = ctx.createImageData(canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
-  for (let i = 0; i < data.data.length; i += 4) 
+  for (let i = 0; i < data.length; i += 4) 
   { 
     // get average of rgb, set all rbg to the averaged value to create a grayscale image
-    let gs = Math.ceil((data.data[i] + data.data[i + 1] + data.data[i + 2]) / 3)
+    let gs = Math.ceil((data[i] + data[i + 1] + data[i + 2]) / 3)
     grayscaleImage.data[i] = gs; // r
     grayscaleImage.data[i + 1] = gs; // g
     grayscaleImage.data[i + 2] = gs; // b
@@ -399,15 +395,15 @@ function filter_grayscale() {
 //----- sepia tone image -----//
 // Turns the entire canvas sepia tone
 function filter_sepia() {
-  const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  const { data } = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const sepiaImage = ctx.createImageData(canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
-  for (let i = 0; i < data.data.length; i += 4) 
+  for (let i = 0; i < data.length; i += 4) 
   { 
-    let red = data.data[i];
-    let green = data.data[i + 1];
-    let blue = data.data[i + 2];
+    let red = data[i];
+    let green = data[i + 1];
+    let blue = data[i + 2];
 
     // sepia tone formula
     sepiaImage.data[i] = Math.min(255, 0.393 * red + 0.769 * green + 0.189 * blue); // r
@@ -417,5 +413,55 @@ function filter_sepia() {
   }
 
   ctx.putImageData(sepiaImage, 0, 0);
+  add_canvas_history();
+}
+
+
+//----- mirror the image -----//
+// flip or mirror the image horizontally
+function mirror_image_horizontal() {
+  const mirroredImage = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  
+  // counts the current row we are swapping
+  let count = 0;
+  for (let i = 0, j = (canvasWidth - 1) * 4; count <= canvasHeight; i += 4, j-=4) 
+  { 
+    // we have reached the middle of the image, reset i & j to next row
+    if (i >= j) {
+      count ++;
+      i = (canvasWidth * count) * 4;
+      j = ((canvasWidth * (count +1)) -1) * 4;
+    }
+    let temp = [mirroredImage.data[i], mirroredImage.data[i+1], mirroredImage.data[i+2], mirroredImage.data[i+3]];
+
+    // XOR swap without temp variable test
+    // mirroredImage.data[i] = mirroredImage.data[i] ^ mirroredImage.data[j];
+    // mirroredImage.data[i + 1] = mirroredImage.data[i + 1] ^ mirroredImage.data[j + 1];
+    // mirroredImage.data[i + 2] = mirroredImage.data[i + 2] ^ mirroredImage.data[j + 2];
+    // mirroredImage.data[i + 3] = mirroredImage.data[i + 3] ^ mirroredImage.data[j + 3];
+
+    // mirroredImage.data[j] = mirroredImage.data[i] ^ mirroredImage.data[j];
+    // mirroredImage.data[j + 1] = mirroredImage.data[i + 1] ^ mirroredImage.data[j + 1];
+    // mirroredImage.data[j + 2] = mirroredImage.data[i + 2] ^ mirroredImage.data[j + 2];
+    // mirroredImage.data[j + 3] = mirroredImage.data[i + 3] ^ mirroredImage.data[j + 3];
+
+    // mirroredImage.data[i] = mirroredImage.data[i] ^ mirroredImage.data[j];
+    // mirroredImage.data[i + 1] = mirroredImage.data[i + 1] ^ mirroredImage.data[j + 1];
+    // mirroredImage.data[i + 2] = mirroredImage.data[i + 2] ^ mirroredImage.data[j + 2];
+    // mirroredImage.data[i + 3] = mirroredImage.data[i + 3] ^ mirroredImage.data[j + 3];
+
+    // swap the pixels, i becomes j
+    mirroredImage.data[i] = mirroredImage.data[j] // r
+    mirroredImage.data[i + 1] = mirroredImage.data[j + 1] // g
+    mirroredImage.data[i + 2] = mirroredImage.data[j + 2] // b
+    mirroredImage.data[i + 3] = mirroredImage.data[j + 3]; // keep alpha as 255
+    // j becomes i from temp
+    mirroredImage.data[j] = temp[0] // r
+    mirroredImage.data[j + 1] = temp[1] // g
+    mirroredImage.data[j + 2] = temp[2] // b
+    mirroredImage.data[j + 3] = temp[3]; // keep alpha as 255
+  }
+
+  ctx.putImageData(mirroredImage, 0, 0);
   add_canvas_history();
 }
