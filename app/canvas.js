@@ -2,8 +2,8 @@
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas = undefined; // initial canvas will be created later
 let ctx = undefined
-let canvasHeight = 1000;
-let canvasWidth = 1500;
+let canvasHeight = 400 ;
+let canvasWidth = 500;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -19,7 +19,8 @@ brushSizeButton.value = 10;
 const toolbarLeft = document.querySelector('.toolbar-left');
 const gsButton = document.querySelector('.gs-button');
 const sepiaButton = document.querySelector('.sepia-button');
-const mirrorHButton = document.querySelector('.mirrorh-button');
+const mirrorHButtonH = document.querySelector('.mirrorh-button');
+const mirrorHButtonV = document.querySelector('.mirrorv-button');
 const bucketButton = document.querySelector('.bucket-button');
 const brushButton = document.querySelector('.brush-button');
 const pencilButton = document.querySelector('.pencil-button');
@@ -61,7 +62,8 @@ addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale(canvasWidth, canvasHeight, canvas_history));
 sepiaButton.addEventListener('click', () => filter_sepia(canvasWidth, canvasHeight));
-mirrorHButton.addEventListener('click', () => mirror_image_horizontal());
+mirrorHButtonH.addEventListener('click', () => mirror_image_horizontal());
+mirrorHButtonV.addEventListener('click', () => mirror_image_vertical());
 
 brushButton.addEventListener('click', (e) => update_selected_tool(e.target));
 pencilButton.addEventListener('click', (e) => update_selected_tool(e.target));
@@ -435,7 +437,7 @@ function mirror_image_horizontal() {
   
   // counts the current row we are swapping
   let count = 0;
-  for (let i = 0, j = (canvasWidth - 1) * 4; count <= canvasHeight; i += 4, j-=4) 
+  for (let i = 0, j = (canvasWidth - 1) * 4; count <= canvasHeight; i += 4, j -= 4) 
   { 
     // we have reached the middle of the image, reset i & j to next row
     if (i >= j) {
@@ -443,8 +445,44 @@ function mirror_image_horizontal() {
       i = (canvasWidth * count) * 4;
       j = ((canvasWidth * (count +1)) -1) * 4;
     }
-    let temp = [mirroredImage.data[i], mirroredImage.data[i+1], mirroredImage.data[i+2], mirroredImage.data[i+3]];
     
+    let temp = [mirroredImage.data[i], mirroredImage.data[i+1], mirroredImage.data[i+2], mirroredImage.data[i+3]];
+
+    // swap the pixels, i becomes j
+    mirroredImage.data[i] = mirroredImage.data[j] // r
+    mirroredImage.data[i + 1] = mirroredImage.data[j + 1] // g
+    mirroredImage.data[i + 2] = mirroredImage.data[j + 2] // b
+    mirroredImage.data[i + 3] = mirroredImage.data[j + 3]; // keep alpha as 255
+    // j becomes i from temp
+    mirroredImage.data[j] = temp[0] // r
+    mirroredImage.data[j + 1] = temp[1] // g
+    mirroredImage.data[j + 2] = temp[2] // b
+    mirroredImage.data[j + 3] = temp[3]; // keep alpha as 255
+  }
+
+  ctx.putImageData(mirroredImage, 0, 0);
+  add_canvas_history();
+}
+
+
+//----- mirror the image -----//
+// flip or mirror the image vertically
+function mirror_image_vertical() {
+  const mirroredImage = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+  
+  // counts the current row we are swapping
+  let count = 0;
+  for (let i = 0, j = (canvasHeight * canvasWidth) - canvasWidth; count <= canvasWidth; i += canvasWidth * 4, j -= canvasWidth * 4) 
+  { 
+    // we have reached the middle of the image, reset i & j to next col
+    if (i >= j) {
+      count ++;
+      i = count * 4;
+      j = ((canvasHeight * canvasWidth) - canvasWidth + count) * 4;
+    }
+    
+    let temp = [mirroredImage.data[i], mirroredImage.data[i+1], mirroredImage.data[i+2], mirroredImage.data[i+3]];
+
     // swap the pixels, i becomes j
     mirroredImage.data[i] = mirroredImage.data[j] // r
     mirroredImage.data[i + 1] = mirroredImage.data[j + 1] // g
