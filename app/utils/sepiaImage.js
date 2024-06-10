@@ -1,17 +1,14 @@
-import { ctx } from "../canvas.js";
-
-//----- sepia tone image -----//
-// Turns the entire canvas sepia tone
-export function sepiaImage(ctx, canvasWidth, canvasHeight) {
-  const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-  const sepiaImage = ctx.createImageData(canvasWidth, canvasHeight);
+export function filterSepia(canvasWidth, canvasHeight) {
+  const canvas = document.querySelector(".active-canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })
+  const sepiaImage = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
-  for (let i = 0; i < data.data.length; i += 4) 
+  for (let i = 0; i < data.length; i += 4) 
   { 
-    let red = data.data[i];
-    let green = data.data[i + 1];
-    let blue = data.data[i + 2];
+    let red = sepiaImage.data[i];
+    let green = sepiaImage.data[i + 1];
+    let blue = sepiaImage.data[i + 2];
 
     // sepia tone formula
     sepiaImage.data[i] = Math.min(255, 0.393 * red + 0.769 * green + 0.189 * blue); // r
@@ -21,5 +18,5 @@ export function sepiaImage(ctx, canvasWidth, canvasHeight) {
   }
 
   ctx.putImageData(sepiaImage, 0, 0);
-  add_canvas_history();
+  add_canvas_history("canvas-edit");
 }

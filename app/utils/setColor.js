@@ -1,6 +1,6 @@
-import { current_color } from "../canvas.js";
+import { current_color } from "../canvas2.js";
 // 
-export function set_current_color(e) {
+export function setCurrentColor(e) {
   const canvasLayers = document.querySelector('.canvas-layers');
   // convert hex to rgb
   const hex = e.target.value;

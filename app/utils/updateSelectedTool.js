@@ -1,4 +1,4 @@
-import { tools } from "../canvas.js";
+import { tools } from "../canvas2.js";
 
 // Highlights the selected tool in tools panel
 export function updateSelectedTool(target) {

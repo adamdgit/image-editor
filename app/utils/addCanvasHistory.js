@@ -2,7 +2,7 @@ import { canvasHeight, canvasWidth, canvas_history } from "../canvas.js";
 
 //----- add to canvas history -----//
 // use this function any time you modify the canvas to create a restore point
-export function add_canvas_history(ctx) {
+export function addCanvasHistory(ctx) {
   // keep stack at 20 items max, remove from bottom if at 20
   if (canvas_history.length > 19) {
     canvas_history.shift();
