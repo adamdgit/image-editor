@@ -190,7 +190,7 @@ canvas:hover {
   pointer-events: none;
 }
 .layer button { height: 17px; width: 17px; }
-.layer svg { background: white; }
+.layer svg { background: white; pointer-events: none; }
 
 .current-layer {
   border: 2px solid #333;
