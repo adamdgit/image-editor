@@ -1,9 +1,12 @@
 // canvas variables
+const currentLayer = document.querySelector('.current-layer');
 const canvasLayers = document.querySelector('.canvas-layers');
-let selected_canvas = undefined; // initial canvas will be created later
-let ctx = undefined
-let canvasHeight = 400 ;
+let selected_canvas = document.querySelector('canvas');
+let ctx = selected_canvas.getContext("2d", { willReadFrequently: true });
+let canvasHeight = 400;
 let canvasWidth = 500;
+selected_canvas.width = canvasWidth;
+selected_canvas.height = canvasHeight;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -13,7 +16,6 @@ const colorPicker = document.getElementById("colorpicker");
 const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
 const brushSizeButton = document.querySelector('.brushsize');
-brushSizeButton.value = 10;
 
 // side toolbar
 const toolbarLeft = document.querySelector('.toolbar-left');
@@ -41,13 +43,21 @@ const fill_tolerance = 0;
 // stores canvas image data for each action on a stack for undo/redo
 const canvas_history = [];
 const undone_history = []; // stores undone history for redo function
+// blank canvas and layer info is stored as default into history, 
+// any futures changes can be reverted to default
+const DEFAULT_HISTORY_ITEMS = 2;
 
-//------ INITIALIZE CANVAS ------//
-// append inital layer to layers wrapper
-add_new_layer(layerWrapper);
-// store blank canvas
-add_canvas_history("canvas-edit");
-//------ END INITITALIZE CANVAS ------//
+//------ INITIALIZE DEFAULTS ------//
+selected_canvas.addEventListener('pointerdown', handlePointerDown);
+currentLayer.children[0].addEventListener('click', (e) => hide_layer(e));
+currentLayer.children[1].addEventListener('click', (e) => update_selected_layer(e));
+currentLayer.children[2].addEventListener('click', () => {
+  if (!remove_layer(currentLayer.dataset.layerId)) return;
+  add_history_event("delete-layer", selected_canvas);
+});
+add_history_event("canvas-edit", selected_canvas);
+add_history_event("add-new-layer", currentLayer);
+//---------------------------------//
 
 // top toolbar
 fileIn.addEventListener('change', () => user_image_upload());
@@ -57,7 +67,10 @@ undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 
 // right toolbar
-addLayerButton.addEventListener('click', () => add_new_layer(layerWrapper));
+addLayerButton.addEventListener('click', (e) => {
+  let newLayer = add_new_layer();
+  add_history_event("add-new-layer", newLayer);
+});
 
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale(canvasWidth, canvasHeight, canvas_history));
@@ -116,18 +129,25 @@ bucketButton.addEventListener('click', (e) => update_selected_tool(e.target));
 // }
 
 // Adds new canvas and layer element with matching id's
-function add_new_layer(layerWrapper) {
-  const layerId = Date.now(); // random id using datetime
+function add_new_layer(canvasData, id) {
+  // when restoring old layers using undo, we pass the id to restore its original data
+  let layerId = Date.now();
+  if (id) layerId = id; 
+
   const newLayer = document.createElement('div');
 
-  if (layerWrapper.children.length === 0) {
-    newLayer.classList.add('current-layer')
-  }
+  // create new canvas with same ID as layer
+  const newCanvas = document.createElement('canvas');
+  newCanvas.dataset.layerId = layerId;
+  newCanvas.height = canvasHeight;
+  newCanvas.width = canvasWidth;
+  newCanvas.style.pointerEvents = 'none';
 
   // layer id's match the layer to the canvas
   newLayer.dataset.layerId = layerId;
   newLayer.classList.add("layer");
 
+  // create children elements of new layer
   const hideBtn = document.createElement('button');
   hideBtn.classList.add('hide-layer-btn');
   hideBtn.innerHTML = hide_svg;
@@ -135,43 +155,34 @@ function add_new_layer(layerWrapper) {
 
   const spanEl = document.createElement('span');
   spanEl.classList.add('layer-text');
-  spanEl.innerHTML = `Layer ${layerWrapper.children.length +1}`;
+  spanEl.innerHTML = `Layer`;
+  spanEl.addEventListener('click', (e) => update_selected_layer(e));
 
   const deleteBtn = document.createElement('button');
   deleteBtn.classList.add('delete-layer-btn');
   deleteBtn.innerHTML = remove_svg;
-  deleteBtn.addEventListener('click', (e) => remove_layer(layerId));
+  deleteBtn.addEventListener('click', () => {
+    if (!remove_layer(layerId)) return;
+    add_history_event("delete-layer", newCanvas);
+  });
 
   newLayer.appendChild(hideBtn);
   newLayer.appendChild(spanEl);
   newLayer.appendChild(deleteBtn);
-
-  // add listeners to each new layer
-  newLayer.addEventListener('click', (e) => update_selected_layer(e));
   layerWrapper.appendChild(newLayer);
 
-  // create new canvas
-  const newCanvas = document.createElement('canvas');
-  newCanvas.dataset.layerId = layerId;
-  newCanvas.height = canvasHeight;
-  newCanvas.width = canvasWidth;
-  newCanvas.style.pointerEvents = 'none';
-
-  if (layerWrapper.children.length === 1) {
-    newCanvas.classList.add('active-canvas');
-    newCanvas.style.pointerEvents = 'all';
-    newCanvas.addEventListener('pointerdown', handlePointerDown);
-    selected_canvas = newCanvas;
-  }
+  // when restoring a deleted layer via undo actions, we pass the 
+  // data from the deleted canvas, so it can be restored
+  if (canvasData) newCanvas.getContext("2d").putImageData(canvasData, 0, 0);
 
   canvasLayers.prepend(newCanvas);
-  add_canvas_history("add-new-layer");
+  return newLayer;
 }
 
-// handles removing a layer in the sidebar and associated canvas
+// handles removing a layer by given ID, returns true if successful
 function remove_layer(layerId) {
   // Must have atleast one canvas
-  if (canvasLayers.children.length === 1) return;
+  if (canvasLayers.children.length === 1) return false;
 
   // remove associated canvas by id match
   [...canvasLayers.children].forEach(canvas => {
@@ -189,6 +200,8 @@ function remove_layer(layerId) {
       layer.remove();
     }
   });
+
+  return true;
 }
 
 
@@ -211,7 +224,7 @@ function handlePointerMove(e) {
 function handlePointerUp() {
   selected_canvas.removeEventListener('pointermove', handlePointerMove);
   // add undo point after mouseup
-  add_canvas_history("canvas-edit");
+  add_history_event("canvas-edit", selected_canvas);
 }
 
 
@@ -228,7 +241,7 @@ function user_image_upload() {
       // selected_canvas.height = image.height;
       // selected_canvas.width = image.width;
       ctx.drawImage(image, 0, 0, image.width, image.height)
-      add_canvas_history("canvas-edit");
+      add_history_event("canvas-edit");
     }
   }
 }
@@ -296,15 +309,33 @@ function update_selected_layer(e) {
 //----- undo canvas history -----//
 // undo history by reverting to previous top of stack canvas state
 function undo_history() {
-
   // do nothing if no history to undo
-  if (canvas_history.length === 2) return
+  if (canvas_history.length === DEFAULT_HISTORY_ITEMS) return
 
   // remove most recent and save for redo
-  const removed = canvas_history.pop();
-  undone_history.push(removed);
+  const removedItem = canvas_history.pop();
+  undone_history.push(removedItem);
 
-  handle_history_update(removed);
+  // check type of undo to perform
+  switch (removedItem.type) {
+    case "canvas-edit":
+      ctx.putImageData(item.data, 0, 0);
+      break;
+    
+    case "add-new-layer":
+      // delete layer by id
+      remove_layer(removedItem.id);
+      break;
+
+    case "delete-layer":
+      // restore deleted layer and associated canvas
+      add_new_layer(removedItem.data, removedItem.id)
+      break;
+  
+    default:
+      break;
+  }
+  console.log("remove: ", canvas_history)
 }
 
 //----- redo canvas history -----//
@@ -314,88 +345,74 @@ function redo_history() {
   if (undone_history.length === 0) return
 
   // get top of the undone history
-  const top = undone_history.pop();
-  canvas_history.push(top);
+  const removedItem = undone_history.pop();
+  canvas_history.push(removedItem);
 
-  // restore and redo
-  ctx.putImageData(top, 0, 0)
-}
-
-//----- add to canvas history -----//
-// use this function any time you modify the canvas to create a restore point
-function add_canvas_history(type) {
-
-  // keep stack at 20 items max, remove from bottom if at 20
-  if (canvas_history.length > 19) {
-    canvas_history.shift();
-  }
-
-  switch (type) {
+  // check type of undo to perform
+  switch (removedItem.type) {
     case "canvas-edit":
-      // get the current canvas state and save to canvas history stack
-      ctx = selected_canvas.getContext("2d", { willReadFrequently: true });
-      const current = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-      canvas_history.push({
-        type: type,
-        data: current,
-        id: selected_canvas.dataset.layerId
-      });
+      ctx.putImageData(removedItem.data, 0, 0);
       break;
     
     case "add-new-layer":
-      let newLayer = layerWrapper.children[layerWrapper.children.length -1];
-      canvas_history.push({
-        type: type,
-        data: newLayer,
-        id: newLayer.dataset.layerId
-      });
+      add_new_layer(removedItem.data, removedItem.id);
       break;
 
     case "delete-layer":
       break;
-  
+
     default:
       break;
   }
   console.log("add:", canvas_history)
 }
 
-// Handle undo/redo changes based on type of change
-function handle_history_update(removedItem) {
-  // check type of edit to perform
-  switch (removedItem.type) {
+//----- add to canvas history -----//
+// use this function any time you modify the canvas to create a restore point
+function add_history_event(type, element) {
+  if (canvas_history.length > 29) {
+    canvas_history.shift();
+  }
+
+  switch (type) {
     case "canvas-edit":
-        // find the previous canvas state to restore, ignoring history
-        // such as selected layer or delete layer history items
-        for (let i = canvas_history.length -1; i >= 0; i--) {
-          let item = canvas_history[i];
-          if (item.type === removedItem.type) {
-            // restore data to canvas
-            ctx.putImageData(item.data, 0, 0);
-            break;
-          }
-        }
+      // get the current canvas state and save to canvas history stack
+      const currentctx = element.getContext("2d");
+      const current = currentctx.getImageData(0, 0, canvasWidth, canvasHeight);
+      canvas_history.push({
+        type: type,
+        data: current,
+        element: element,
+        id: element.dataset.layerId
+      });
       break;
     
     case "add-new-layer":
-      // find the last layer added in history, and restore it
-      for (let i = canvas_history.length -1; i >= 0; i--) {
-        let item = canvas_history[i];
-        if (item.type === removedItem.type) {
-          // delete layer
-          remove_layer(removedItem.id);
-          break;
-        }
-      }
+      canvas_history.push({
+        type: type,
+        data: null,
+        element: element,
+        id: element.dataset.layerId
+      });
       break;
 
     case "delete-layer":
+      // get canvas associated with deleted layer
+      const deletedctx = element.getContext("2d");
+      const deleted = deletedctx.getImageData(0, 0, canvasWidth, canvasHeight);
+      remove_layer(element.dataset.layerId)
+      canvas_history.push({
+        type: type,
+        data: deleted,
+        element: element,
+        id: element.dataset.layerId
+      });
       break;
   
     default:
       break;
   }
-  console.log("remove: ", canvas_history)
+  console.log("add:", canvas_history)
 }
 
 
@@ -510,7 +527,7 @@ function filter_grayscale() {
   }
 
   ctx.putImageData(grayscaleImage, 0, 0);
-  add_canvas_history("canvas-edit");
+  add_history_event("canvas-edit");
 }
 
 //----- sepia tone image -----//
@@ -519,7 +536,7 @@ function filter_sepia() {
   const sepiaImage = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
   // skip every 4 values (rgba) boomer loops ftw
-  for (let i = 0; i < data.length; i += 4) 
+  for (let i = 0; i < sepiaImage.data.length; i += 4) 
   { 
     let red = sepiaImage.data[i];
     let green = sepiaImage.data[i + 1];
@@ -533,7 +550,7 @@ function filter_sepia() {
   }
 
   ctx.putImageData(sepiaImage, 0, 0);
-  add_canvas_history("canvas-edit");
+  add_history_event("canvas-edit");
 }
 
 //----- mirror the image -----//
@@ -555,7 +572,7 @@ function mirror_image_horizontal() {
   }
 
   ctx.putImageData(mirroredImage, 0, 0);
-  add_canvas_history("canvas-edit");
+  add_history_event("canvas-edit");
 }
 
 
@@ -578,7 +595,7 @@ function mirror_image_vertical() {
   }
 
   ctx.putImageData(mirroredImage, 0, 0);
-  add_canvas_history("canvas-edit");
+  add_history_event("canvas-edit");
 }
 
 function swap_pixels(data, i, j) {
