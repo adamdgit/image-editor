@@ -37,7 +37,7 @@ const layerWrapper = document.querySelector('.layers-wrap');
 
 // options
 export const tools = ["brush", "pencil", "eraser", "bucket"];
-let current_tool = tools[0];
+export let current_tool = tools[0];
 export let current_color = [0, 0, 0, 255];
 export let tool_size = 10;
 // 0 = RGB values must match completely, higher means RGB values can vary to get better fill results
@@ -51,7 +51,7 @@ const undone_history = []; // stores undone history for redo function
 // append inital layer to layers wrapper
 addNewLayer(layerWrapper);
 // store blank canvas
-// addCanvasHistory("canvas-edit");
+addCanvasHistory("canvas-edit");
 //------ END INITITALIZE CANVAS ------//
 
 // top toolbar
