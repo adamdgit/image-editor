@@ -1,5 +1,5 @@
 // canvas variables
-const currentLayer = document.querySelector('.current-layer');
+const currentLayer = document.querySelector('.active-layer');
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas = document.querySelector('canvas');
 let ctx = selected_canvas.getContext("2d", { willReadFrequently: true });
@@ -38,7 +38,7 @@ let tool_size = 10;
 const hide_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"/></svg>';
 const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg>';
 // 0 = RGB values must match completely, higher means RGB values can vary to get better fill results
-const fill_tolerance = 20;
+const fill_tolerance = 40;
 
 // stores canvas image data for each action on a stack for undo/redo
 const history = [];
@@ -49,9 +49,12 @@ const DEFAULT_HISTORY_ITEMS = 2;
 
 //------ INITIALIZE DEFAULTS ------//
 selected_canvas.addEventListener('pointerdown', handlePointerDown);
-currentLayer.children[0].addEventListener('click', (e) => hide_layer(e));
+// hide
+currentLayer.children[0].children[0].addEventListener('click', () => toggle_hide_layer(currentLayer.dataset.layerId));
+// layer
 currentLayer.children[1].addEventListener('click', (e) => update_selected_layer(e));
-currentLayer.children[2].addEventListener('click', () => {
+// delete
+currentLayer.children[0].children[1].addEventListener('click', () => {
   // only add to history if there is a layer to remove, never remove inital canvas layer
   if (remove_layer(currentLayer.dataset.layerId)) {
     add_history_event("delete-layer", selected_canvas);
@@ -94,6 +97,9 @@ function add_new_layer(canvasData, id) {
   if (id) layerId = id; 
 
   const newLayer = document.createElement('div');
+  const btnsWrap = document.createElement('div');
+
+  btnsWrap.classList.add('layer-btns-wrap')
 
   // create new canvas with same ID as layer
   const newCanvas = document.createElement('canvas');
@@ -110,24 +116,30 @@ function add_new_layer(canvasData, id) {
   const hideBtn = document.createElement('button');
   hideBtn.classList.add('hide-layer-btn');
   hideBtn.innerHTML = hide_svg;
-  hideBtn.addEventListener('click', (e) => hide_layer(e));
+  hideBtn.addEventListener('click', () => toggle_hide_layer(layerId));
 
   const spanEl = document.createElement('span');
-  spanEl.classList.add('layer-text');
+  spanEl.classList.add('layer-info');
   spanEl.innerHTML = `Layer`;
   spanEl.addEventListener('click', (e) => update_selected_layer(e));
+
+  const divEl = document.createElement('div');
+  divEl.classList.add('layer-preview');
 
   const deleteBtn = document.createElement('button');
   deleteBtn.classList.add('delete-layer-btn');
   deleteBtn.innerHTML = remove_svg;
   deleteBtn.addEventListener('click', () => {
-    if (!remove_layer(layerId)) return;
-    add_history_event("delete-layer", newCanvas);
+    if (remove_layer(layerId)) {
+      add_history_event("delete-layer", newCanvas);
+    }
   });
 
-  newLayer.appendChild(hideBtn);
+  btnsWrap.appendChild(hideBtn);
+  btnsWrap.appendChild(deleteBtn);
+  newLayer.appendChild(btnsWrap);
+  spanEl.appendChild(divEl);
   newLayer.appendChild(spanEl);
-  newLayer.appendChild(deleteBtn);
   layerWrapper.appendChild(newLayer);
 
   // when restoring a deleted layer via undo actions, we pass the 
@@ -136,6 +148,19 @@ function add_new_layer(canvasData, id) {
 
   canvasLayers.prepend(newCanvas);
   return newLayer;
+}
+
+
+// hide layer by given id
+function toggle_hide_layer(id) {
+  // swap between hidden or shown
+  const canvas = document.querySelector(`canvas, [data-layer-id='${id}']`);
+  console.log(canvas)
+  if (canvas.style.display === "none") {
+    canvas.style.display = "block";
+  } else {
+    canvas.style.display = "none";
+  }
 }
 
 // handles removing a layer by given ID, returns true if successful
@@ -147,6 +172,7 @@ function remove_layer(layerId) {
   [...canvasLayers.children].forEach(canvas => {
     if (canvas.dataset.layerId === layerId.toString()) {
       canvas.remove();
+      // removed canvas is the currently selected, must remove eventlisteners 
       if (selected_canvas.dataset.layerId === layerId) {
         selected_canvas.removeEventListener('pointerdown', handlePointerDown);
       }
@@ -162,7 +188,6 @@ function remove_layer(layerId) {
 
   return true;
 }
-
 
 function handlePointerDown(e) {
   selected_canvas.addEventListener('pointermove', handlePointerMove);
@@ -236,33 +261,35 @@ function highlight_selected_tool(target) {
   target.classList.add('selected-tool');
 }
 
-
 // Updates the CTX to the selected canvas
 function update_selected_layer(e) {
-  // add and remove selected class
-  [...layerWrapper.children].forEach(layer => {
-    layer.classList.remove('current-layer');
-  });
+  if (document.querySelector('.current-layer')) {
+    // swap current layer class to selected layer
+    document.querySelector('.current-layer').classList.remove('current-layer');
+  }
   e.target.classList.add('current-layer');
 
+  if (document.querySelector('.active-layer')) {
+    // swap active layer class
+    document.querySelector('.active-layer').classList.remove('active-layer');
+  }
+  e.target.parentNode.classList.add('active-layer');
+
+  // remove active canvas styles
   selected_canvas.removeEventListener('pointerdown', handlePointerDown);
+  selected_canvas.style.pointerEvents = 'none';
+  selected_canvas.classList.remove("active-canvas");
+
+  // Id is stored in the layer wrapper parent element
+  const layerId = e.target.parentNode.dataset.layerId;
 
   // remove pointer events for all children except the selected canvas
-  [...canvasLayers.children].forEach(canvas => {
-    if (canvas.dataset.layerId === e.target.dataset.layerId) {
-      canvas.style.pointerEvents = 'all';
-      canvas.classList.add("active-canvas");
-      // switch context whenever we select a new layer to be the default
-      ctx = canvas.getContext("2d", { willReadFrequently: true });
-      selected_canvas = canvas;
-      selected_canvas.addEventListener('pointerdown', handlePointerDown);
-    } else {
-      // remove pointer events and event listeners for non selected layers
-      canvas.removeEventListener('pointerdown', handlePointerDown);
-      canvas.style.pointerEvents = 'none';
-      canvas.classList.remove("active-canvas");
-    }
-  });
+  const newActiveCanvas = document.querySelector(`[data-layer-id="${layerId}"]`);
+  newActiveCanvas.style.pointerEvents = 'all';
+  // switch context whenever we select a new layer to be the default
+  ctx = newActiveCanvas.getContext("2d", { willReadFrequently: true });
+  selected_canvas = newActiveCanvas;
+  selected_canvas.addEventListener('pointerdown', handlePointerDown);
 }
 
 //----- undo history -----//
@@ -273,6 +300,10 @@ function undo_history() {
 
   // remove most recent and save for redo
   const removedItem = history.pop();
+  // check undone_history stack length
+  if (undone_history.length > 29) {
+    undone_history.shift();
+  }
   undone_history.push(removedItem);
 
   if (removedItem.type === "canvas-edit") {
@@ -354,11 +385,11 @@ function add_history_event(type, element) {
   if (type === "delete-layer") {
       // get canvas associated with deleted layer
       const deletedctx = element.getContext("2d");
-      const deleted = deletedctx.getImageData(0, 0, canvasWidth, canvasHeight);
-      remove_layer(element.dataset.layerId)
+      const deletedCanvasData = deletedctx.getImageData(0, 0, canvasWidth, canvasHeight);
+      // remove_layer(element.dataset.layerId)
       history.push({
         type: type,
-        data: deleted,
+        data: deletedCanvasData,
         element: element,
         id: element.dataset.layerId
       });
@@ -380,7 +411,6 @@ function use_pencil(x, y) {
 function use_eraser(x, y) {
   ctx.clearRect(x - (tool_size / 2), y - (tool_size / 2), tool_size, tool_size);
 }
-
 
 //----- paint bucket fill -----//
 // fills the selected area with a user selected colour
@@ -449,7 +479,6 @@ function use_bucket(y, x) {
 
   ctx.putImageData(canvasData, 0, 0)
 }
-
 
 // return true or false if a pixel is valid to be flood filled
 function color_is_valid(color, r, g, b, a) {
@@ -525,7 +554,6 @@ function mirror_image_horizontal() {
   ctx.putImageData(mirroredImage, 0, 0);
   add_history_event("canvas-edit", selected_canvas);
 }
-
 
 //----- mirror the image -----//
 // flip or mirror the image vertically
