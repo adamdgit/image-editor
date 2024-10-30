@@ -3,6 +3,8 @@
   line-height: 1.5;
   font-size: 16px;
   font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  --toolbar-left-width: 80px;
+  --toolbar-right-width: 240px;
 }
 
 * { margin: 0px; padding: 0px; border: 0px; box-sizing: border-box; }
@@ -27,26 +29,25 @@ header {
   color: white;
 }
 
-h3 {
+h4 {
   text-align: center;
-  font-size: 1.2rem;
   padding: 5px;
 }
 
 .divider2 {
   width: 100%;
   display: grid;
-  grid-template-columns: 100px 1fr 180px;
+  grid-template-columns: var(--toolbar-left-width) 1fr var(--toolbar-right-width);
 }
 
 .toolbar-right {
-  background-color: rgb(192, 192, 192);
+  background-color: #ccc;
 }
 
 .layers-wrap {
   display: grid;
   gap: 10px;
-  padding: 10px;
+  padding: 1rem;
 }
 
 .canvas-wrap {
@@ -125,7 +126,7 @@ canvas:hover {
 
 .arrow-left {
   position: absolute;
-  left: 94px;
+  left: calc(var(--toolbar-left-width) - 6px);
   z-index: 999;
   width: 0; 
   height: 0; 
@@ -137,7 +138,7 @@ canvas:hover {
 
 .tooltip {
   position: absolute;
-  left: 100px;
+  left: var(--toolbar-left-width);
   pointer-events: none;
   z-index: 99;
   background-color: white;
@@ -176,7 +177,7 @@ canvas:hover {
   opacity: 0;
   pointer-events: none;
   position: absolute;
-  left: 100px;
+  left: var(--toolbar-left-width);
 
   display: grid;
   align-items: center;
@@ -217,18 +218,29 @@ canvas:hover {
 .layer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background-color: white;
-  padding: 10px;
+  gap: 1rem;
 }
-.layer .layer-text {
+
+.layer-info {
+  display: grid;
+  justify-items: center;
+  padding: 1rem;
+  width: 100%;
+  background: white;
+}
+
+.layer-preview {
+  height: 100px;
+  width: 100px;
+  background-color: #333;
   pointer-events: none;
 }
+
 .layer button { height: 17px; width: 17px; }
 .layer svg { background: white; pointer-events: none; }
 
 .current-layer {
-  border: 2px solid #333;
+  border: 1px solid #333;
   box-shadow: 0 2px 4px #999;
 }
 
@@ -243,4 +255,13 @@ canvas:hover {
 
 .add-layer-btn:hover {
   background: lightblue;
+}
+
+.layer-btns-wrap {
+  display: grid;
+  gap: 1rem;
+}
+
+.hide-layer-btn svg, .delete-layer-btn svg {
+  background: #ccc;
 }
