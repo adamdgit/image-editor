@@ -33,6 +33,8 @@ const addLayerButton = document.querySelector('.add-layer-btn');
 const layerWrapper = document.querySelector('.layers-wrap');
 
 // default options
+canvasLayers.style.width = `${canvasWidth}px`;
+canvasLayers.style.height = `${canvasHeight}px`;
 widthInput.value = canvasWidth;
 heightInput.value = canvasHeight;
 const tools = ["brush", "pencil", "eraser", "bucket"];
@@ -65,13 +67,8 @@ brushSizeButton.addEventListener('change', (e) => set_tool_size(e.target.value))
 colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
-showEditBtn.addEventListener('click', () => {
-  if (dropdown.classList.contains('show-dropdown')) {
-    dropdown.classList.remove('show-dropdown')
-  } else {
-    dropdown.classList.add('show-dropdown')
-  }
-});
+showEditBtn.addEventListener('click', () => toggle_showhide_btn());
+resizeCanvasBtn.addEventListener('click', () => update_canvas_size());
 
 // right toolbar
 addLayerButton.addEventListener('click', () => {
@@ -169,6 +166,24 @@ function add_new_layer(canvasData, id) {
 
   canvasLayers.prepend(newCanvas);
   return newLayer;
+}
+
+function update_canvas_size() {
+  console.log("size")
+  canvasWidth = widthInput.value;
+  canvasHeight = heightInput.value;
+  [...document.querySelectorAll('canvas')].forEach(canvas => {
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+  })
+}
+
+function toggle_showhide_btn() {
+  if (dropdown.classList.contains('show-dropdown')) {
+    dropdown.classList.remove('show-dropdown')
+  } else {
+    dropdown.classList.add('show-dropdown')
+  }
 }
 
 // hide layer by given id
@@ -363,9 +378,16 @@ function undo_history() {
   if (removedItem.type === "canvas-edit") {
     // after removing the most recent item, we need to revert the canvas to the new
     // top of the history canvas state
-    const prevState = history[history.length -1];
-    const canvasByID = document.querySelector(`[data-layer-id='${prevState.id}']`);
-    canvasByID.getContext("2d").putImageData(prevState.data, 0, 0);
+    const canvasByID = document.querySelector(`[data-layer-id='${removedItem.id}']`);
+
+    // find the prev state of the canvasbyID, which could be further back in the history
+    for (let i = history.length -1; i >= 0; i--) {
+      if (history[i].id === removedItem.id) {
+        canvasByID.getContext("2d").putImageData(history[i].data, 0, 0);
+        break;
+      }
+    }
+
   }
 
   if (removedItem.type === "add-new-layer") {
