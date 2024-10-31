@@ -11,20 +11,40 @@
 <body>
 
   <header>
-    <h1>Simple Image Editor</h1>
+    <h1>WIP: may have bugs</h1>
   </header>
   <main>
     <div class="toolbar-top">
-      <div>
-        <label for="ImgInp">Upload Image</label>
-        <input type="file" accept="image/*" id="imgInp">
+      <div class="edit-dropdown">
+        <span>Edit</span>
+        <ul class="dropdown">
+          <li>
+            <span>Canvas Size</span>
+            <div class="canvas-resize-wrap">
+              <label for="width">Width: </label>
+              <input type="number" id="width">
+              <span>px</span>
+      
+              <label for="height">Height: </label>
+              <input type="number" id="height">
+              <span>px</span>
+            </div>
+          </li>
+          <li>
+            <div>
+              <label for="ImgInp">Upload Image: </label>
+              <input type="file" accept="image/*" id="imgInp">
+            </div>
+          </li>
+        </ul>
       </div>
 
-      <div class="toolbar-container">
+      <div class="toolbar-colorpicker">
         <label for="colorpicker">Color</label>
         <input name="colorpicker" type="color" id="colorpicker">
       </div>
-      <div class="toolbar-container">
+
+      <div class="toolbar-brushsize">
         <label for="brushsize">Brush Size</label>
         <input name="brushsize" type="range" class="brushsize" value="10">
         <span class="brush-value"></span>
@@ -44,15 +64,14 @@
       <div class="toolbar-left">
         <h4>Tools</h4>
         <div class="filter-dropdown">
-          <span class="tooltip">Filters</span>
           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="20" width="20" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"/></svg>
           
-          <div class="filter-dropdown-option">
-            <button class="gs-button">gray-scale</button>
-            <button class="sepia-button">sepia-tone</button>
-            <button class="mirrorh-button">mirror horizontal</button>
-            <button class="mirrorv-button">mirror vertical</button>
-          </div>
+          <ul class="filter-dropdown-option">
+            <li><button class="gs-button">gray-scale</button></li>
+            <li><button class="sepia-button">sepia-tone</button></li>
+            <li><button class="mirrorh-button">mirror horizontal</button></li>
+            <li><button class="mirrorv-button">mirror vertical</button></li>            
+          </ul>
         </div>
 
         <button class="bucket-button toolbar-btn" data-toolname="bucket">
@@ -75,16 +94,10 @@
           <span class="tooltip">Eraser</span>
           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="20" width="20" viewBox="0 0 576 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M290.7 57.4L57.4 290.7c-25 25-25 65.5 0 90.5l80 80c12 12 28.3 18.7 45.3 18.7H288h9.4H512c17.7 0 32-14.3 32-32s-14.3-32-32-32H387.9L518.6 285.3c25-25 25-65.5 0-90.5L381.3 57.4c-25-25-65.5-25-90.5 0zM297.4 416H288l-105.4 0-80-80L227.3 211.3 364.7 348.7 297.4 416z"/></svg>
         </button>
-        <button class="color-button toolbar-btn" data-toolname="colorpicker">
-          <div class="arrow-left"></div>
-          <span class="tooltip">Colour Picker</span>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="20" width="20" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M50.8 333.3c-12 12-18.8 28.3-18.8 45.3V424L0 480l32 32 56-32h45.5c17 0 33.3-6.7 45.3-18.7l126.6-126.6-128-128L50.8 333.3zM483.9 28.1c-37.5-37.5-98.3-37.5-135.8 0l-77.1 77.1-13.1-13.1c-9.4-9.4-24.7-9.3-33.9 0l-41 41c-9.4 9.4-9.4 24.6 0 33.9l161.9 161.9c9.4 9.4 24.7 9.3 33.9 0L419.9 288c9.4-9.4 9.4-24.6 0-33.9l-13.1-13.1 77.1-77.1c37.5-37.5 37.5-98.3 0-135.8z"/></svg>
-        </button>
       </div>
 
       <div class="canvas-wrap">
         <div class="canvas-layers">
-          <canvas data-layer-id="1718023892440"></canvas>
         </div>
       </div>
 
@@ -95,20 +108,7 @@
         </button>
 
         <div class="layers-wrap">
-          <div data-layer-id="1718023892440" class="layer active-layer">
-            <div class="layer-btns-wrap">
-              <button class="hide-layer-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"></path></svg>
-              </button>
-              <button class="delete-layer-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"></path></svg>
-              </button>
-            </div>
-            <span class="layer-info current-layer">
-              layer
-              <div class="layer-preview"></div>
-            </span>
-          </div>
+
         </div>
 
       </div>
