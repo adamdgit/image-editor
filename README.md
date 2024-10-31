@@ -6,16 +6,19 @@
 This project is designed to be a performant, web-based image editor using only vanilla javascript.
 
 ### Features
-**Primary Tools:**
-Brush, Pencil, Eraser, Paint Bucket
+**Primary Tools:**\
+Brush\
+Pencil\
+Eraser\
+Paint Bucket
 
-**Effects:**
+**Effects:**\
 Grayscale\
 Sepia\
 Mirror Horizonal\
 Mirror Vertical
 
-**Other:**
+**Other:**\
 Upload Image\
 Undo, Redo\
 Color Selector\
