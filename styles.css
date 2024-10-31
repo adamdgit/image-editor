@@ -68,17 +68,12 @@ h4 {
   );
   background-repeat: repeat ;
   background-size: 40px 40px;
-
   width: 500px;
   height: 500px;
 }
 
 canvas {
   position: absolute;
-}
-
-canvas:hover {
-  cursor: crosshair;
 }
 
 .toolbar-top {
@@ -174,11 +169,11 @@ canvas:hover {
 }
 
 .filter-dropdown-option {
+  list-style: none;
   opacity: 0;
   pointer-events: none;
   position: absolute;
   left: var(--toolbar-left-width);
-
   display: grid;
   align-items: center;
   justify-content: space-around;
@@ -205,13 +200,17 @@ canvas:hover {
   color: white;
 }
 
-.toolbar-container {
+.toolbar-colorpicker, .toolbar-brushsize {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.toolbar-container input {
+.toolbar-brushsize {
+  display: none;
+}
+
+.toolbar-colorpicker input, .toolbar-brushsize input {
   cursor: pointer;
 }
 
@@ -254,7 +253,7 @@ canvas:hover {
 }
 
 .add-layer-btn:hover {
-  background: lightblue;
+  background: rgb(102, 198, 230);
 }
 
 .layer-btns-wrap {
@@ -264,4 +263,70 @@ canvas:hover {
 
 .hide-layer-btn svg, .delete-layer-btn svg {
   background: #ccc;
+}
+.delete-layer-btn:hover svg {
+  fill: rgb(184, 41, 41);
+}
+
+#imgInp::file-selector-button {
+  width: 100px;
+  height: 30px;
+  cursor: pointer;
+}
+#imgInp {
+  width: 100px;
+}
+
+
+/* dropdown topbar */
+.edit-dropdown {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 80px;
+  height: 40px;
+  border: 1px solid #ccc;
+  background-color: #ededed;
+}
+.edit-dropdown:hover {
+  background: white;
+}
+
+.dropdown {
+  z-index: 999;
+  background: white;
+  border: 1px solid #ccc;
+  list-style: none;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left:0;
+  top: 40px;
+  display: grid;
+  width: auto;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.dropdown li {
+  border-bottom: 1px solid #ccc;
+  padding: .6rem;
+}
+
+.show-dropdown {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.canvas-resize-wrap {
+  display: flex;
+  padding-block: .7rem;
+  gap: 1rem;
+}
+.canvas-resize-wrap input {
+  width: 100px;
+  height: 30px;
+  border: 1px solid #ccc;
 }
