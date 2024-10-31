@@ -1,12 +1,10 @@
 // canvas variables
 const currentLayer = document.querySelector('.active-layer');
 const canvasLayers = document.querySelector('.canvas-layers');
-let selected_canvas = document.querySelector('canvas');
-let ctx = selected_canvas.getContext("2d", { willReadFrequently: true });
+let selected_canvas;
+let ctx;
 let canvasHeight = 400;
 let canvasWidth = 500;
-selected_canvas.width = canvasWidth;
-selected_canvas.height = canvasHeight;
 canvasLayers.style.width = `${canvasWidth}px`;
 canvasLayers.style.height = `${canvasHeight}px`;
 
@@ -16,6 +14,8 @@ const colorPicker = document.getElementById("colorpicker");
 const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
 const brushSizeButton = document.querySelector('.brushsize');
+const brushToolbar = document.querySelector('.toolbar-brushsize');
+const editToolbar = document.querySelector('.edit-dropdown');
 
 // side toolbar
 const toolbarLeft = document.querySelector('.toolbar-left');
@@ -36,6 +36,7 @@ let current_tool = tools[0];
 let current_color = [0, 0, 0, 255];
 let tool_size = 10;
 const hide_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M320 400c-75.9 0-137.3-58.7-142.9-133.1L72.2 185.8c-13.8 17.3-26.5 35.6-36.7 55.6a32.4 32.4 0 0 0 0 29.2C89.7 376.4 197.1 448 320 448c26.9 0 52.9-4 77.9-10.5L346 397.4a144.1 144.1 0 0 1 -26 2.6zm313.8 58.1l-110.6-85.4a331.3 331.3 0 0 0 81.3-102.1 32.4 32.4 0 0 0 0-29.2C550.3 135.6 442.9 64 320 64a308.2 308.2 0 0 0 -147.3 37.7L45.5 3.4A16 16 0 0 0 23 6.2L3.4 31.5A16 16 0 0 0 6.2 53.9l588.4 454.7a16 16 0 0 0 22.5-2.8l19.6-25.3a16 16 0 0 0 -2.8-22.5zm-183.7-142l-39.3-30.4A94.8 94.8 0 0 0 416 256a94.8 94.8 0 0 0 -121.3-92.2A47.7 47.7 0 0 1 304 192a46.6 46.6 0 0 1 -1.5 10l-73.6-56.9A142.3 142.3 0 0 1 320 112a143.9 143.9 0 0 1 144 144c0 21.6-5.3 41.8-13.9 60.1z"/></svg>';
+const show_svg = `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 576 512"><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M572.5 241.4C518.3 135.6 410.9 64 288 64S57.7 135.6 3.5 241.4a32.4 32.4 0 0 0 0 29.2C57.7 376.4 165.1 448 288 448s230.3-71.6 284.5-177.4a32.4 32.4 0 0 0 0-29.2zM288 400a144 144 0 1 1 144-144 143.9 143.9 0 0 1 -144 144zm0-240a95.3 95.3 0 0 0 -25.3 3.8 47.9 47.9 0 0 1 -66.9 66.9A95.8 95.8 0 1 0 288 160z"/></svg>`
 const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="17" width="17" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.7 23.7 0 0 0 -21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0 -16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg>';
 // 0 = RGB values must match completely, higher means RGB values can vary to get better fill results
 const fill_tolerance = 40;
@@ -45,37 +46,38 @@ const history = [];
 const undone_history = []; // stores undone history for redo function
 // blank canvas and layer info is stored as default into history, 
 // any futures changes can be reverted to default
-const DEFAULT_HISTORY_ITEMS = 2;
+const DEFAULT_HISTORY_ITEMS = 1;
 
-//------ INITIALIZE DEFAULTS ------//
-selected_canvas.addEventListener('pointerdown', handlePointerDown);
-// hide
-currentLayer.children[0].children[0].addEventListener('click', () => toggle_hide_layer(currentLayer.dataset.layerId));
-// layer
-currentLayer.children[1].addEventListener('click', (e) => update_selected_layer(e));
-// delete
-currentLayer.children[0].children[1].addEventListener('click', () => {
-  // only add to history if there is a layer to remove, never remove inital canvas layer
-  if (remove_layer(currentLayer.dataset.layerId)) {
-    add_history_event("delete-layer", selected_canvas);
-  }
-});
-add_history_event("canvas-edit", selected_canvas);
-add_history_event("add-new-layer", currentLayer);
-//---------------------------------//
+//------ CREATE INITIAL BLANK LAYER ------//
+const initalLayer = add_new_layer();
+const infoEl = initalLayer.querySelector('.layer-info');
+selected_canvas = document.querySelector(`[data-layer-id='${initalLayer.dataset.layerId}']`);
+ctx = selected_canvas.getContext('2d', { willReadFrequently: true });
+update_selected_layer(infoEl);
+add_history_event("add-new-layer", selected_canvas);
+//----------------------------------------//
 
 // top toolbar
 fileIn.addEventListener('change', () => user_image_upload());
-brushSizeButton.addEventListener('change', (e) => tool_size = e.target.value);
+brushSizeButton.addEventListener('change', (e) => set_tool_size(e.target.value));
 colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
+editToolbar.addEventListener('click', () => {
+  if (editToolbar.children[1].classList.contains('show-dropdown')) {
+    editToolbar.children[1].classList.remove('show-dropdown')
+  } else {
+    editToolbar.children[1].classList.add('show-dropdown')
+  }
+});
 
 // right toolbar
-addLayerButton.addEventListener('click', (e) => {
-  let newLayer = add_new_layer();
-  add_history_event("add-new-layer", newLayer);
-});
+addLayerButton.addEventListener('click', () => {
+  // creates a new canvas, gets the associated ID, to pass to history
+  const newLayer = add_new_layer();
+  const newCanvas = document.querySelector(`[data-layer-id='${newLayer.dataset.layerId}']`);
+  add_history_event("add-new-layer", newCanvas)
+})
 
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale());
@@ -88,6 +90,14 @@ pencilButton.addEventListener('click', (e) => update_selected_tool(e.target));
 eraserButton.addEventListener('click', (e) => update_selected_tool(e.target));
 bucketButton.addEventListener('click', (e) => update_selected_tool(e.target));
 
+// only visible when certain tools are selected such as brush or pencil
+function set_tool_size(size) {
+  if (size < 1) size = 1;
+  tool_size = size;
+
+  // also update the cursor size
+  selected_canvas.style.cursor = create_custom_cursor(tool_size);
+}
 
 // Adds new canvas and layer element with matching id's
 function add_new_layer(canvasData, id) {
@@ -115,13 +125,21 @@ function add_new_layer(canvasData, id) {
   // create children elements of new layer
   const hideBtn = document.createElement('button');
   hideBtn.classList.add('hide-layer-btn');
-  hideBtn.innerHTML = hide_svg;
-  hideBtn.addEventListener('click', () => toggle_hide_layer(layerId));
+  hideBtn.dataset.show = "true";
+  hideBtn.addEventListener('pointerenter', () => {
+    hideBtn.dataset.show === 'true' ? hideBtn.innerHTML = hide_svg : hideBtn.innerHTML = show_svg;
+  });
+  hideBtn.addEventListener('pointerleave', () => {
+    hideBtn.dataset.show === 'true' ? hideBtn.innerHTML = show_svg : hideBtn.innerHTML = hide_svg;
+  });
+
+  hideBtn.innerHTML = show_svg;
+  hideBtn.addEventListener('click', () => toggle_hide_layer(hideBtn, layerId));
 
   const spanEl = document.createElement('span');
   spanEl.classList.add('layer-info');
   spanEl.innerHTML = `Layer`;
-  spanEl.addEventListener('click', (e) => update_selected_layer(e));
+  spanEl.addEventListener('click', (e) => update_selected_layer(e.target));
 
   const divEl = document.createElement('div');
   divEl.classList.add('layer-preview');
@@ -130,6 +148,7 @@ function add_new_layer(canvasData, id) {
   deleteBtn.classList.add('delete-layer-btn');
   deleteBtn.innerHTML = remove_svg;
   deleteBtn.addEventListener('click', () => {
+    // can fail, as must always be 1
     if (remove_layer(layerId)) {
       add_history_event("delete-layer", newCanvas);
     }
@@ -150,17 +169,14 @@ function add_new_layer(canvasData, id) {
   return newLayer;
 }
 
-
 // hide layer by given id
-function toggle_hide_layer(id) {
+function toggle_hide_layer(hideBtn, id) {
   // swap between hidden or shown
+  hideBtn.dataset.show === "true" ? hideBtn.dataset.show = "false" : hideBtn.dataset.show = "true";
   const canvas = document.querySelector(`canvas, [data-layer-id='${id}']`);
-  console.log(canvas)
-  if (canvas.style.display === "none") {
-    canvas.style.display = "block";
-  } else {
-    canvas.style.display = "none";
-  }
+  canvas.style.display === "none" ? canvas.style.display = "block" : canvas.style.display = "none";
+  const layerWrap = document.querySelector(`.layer[data-layer-id='${id}'] .layer-info`);
+  hideBtn.dataset.show === "true" ? layerWrap.style.opacity = '1' : layerWrap.style.opacity = '.3'; 
 }
 
 // handles removing a layer by given ID, returns true if successful
@@ -187,6 +203,33 @@ function remove_layer(layerId) {
   });
 
   return true;
+}
+
+// update tool size and create a custom svg for users cursor based on size
+function create_custom_cursor(size) {
+  // brush needs a circle svg cursor, eraser and pencil need square cursor
+  const type = current_tool === "brush" ? "circle" : "square";
+
+  let svg;
+  if (type === "circle") {
+    svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size * 2}" height="${size * 2}" viewBox="0 0 ${size * 2} ${size * 2}">
+        <circle cx="${size}" cy="${size}" r="${size - 1}" fill="none" stroke="cyan" stroke-width="2" />
+      </svg>
+    `;
+  }
+
+  if (type === "square") {
+    svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size * 2}" height="${size * 2}" viewBox="0 0 ${size * 2} ${size * 2}">
+        <rect x="${size / 2}" y="${size / 2}" width="${size}" height="${size}" fill="none" stroke="cyan" stroke-width="2" />
+      </svg>
+    `;
+  }
+
+  // Encode the SVG string to ensure it's correctly interpreted in the data URI
+  const cursor = `url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}') ${size} ${size}, auto`;
+  return cursor;
 }
 
 function handlePointerDown(e) {
@@ -251,6 +294,15 @@ function update_selected_tool(target) {
   highlight_selected_tool(target);
   let toolIndex = tools.indexOf(target.dataset.toolname);
   current_tool = tools[toolIndex];
+
+  // update cursor to appropriate type
+  if (current_tool === "bucket") {
+    selected_canvas.style.cursor = 'crosshair';
+    brushToolbar.style.display = 'none';
+  } else {
+    selected_canvas.style.cursor = create_custom_cursor(tool_size);
+    brushToolbar.style.display = 'flex';
+  }
 }
 
 // remove any highlited tools and highlight the selected one
@@ -262,18 +314,18 @@ function highlight_selected_tool(target) {
 }
 
 // Updates the CTX to the selected canvas
-function update_selected_layer(e) {
+function update_selected_layer(element) {
   if (document.querySelector('.current-layer')) {
     // swap current layer class to selected layer
     document.querySelector('.current-layer').classList.remove('current-layer');
   }
-  e.target.classList.add('current-layer');
+  element.classList.add('current-layer');
 
   if (document.querySelector('.active-layer')) {
     // swap active layer class
     document.querySelector('.active-layer').classList.remove('active-layer');
   }
-  e.target.parentNode.classList.add('active-layer');
+  element.parentNode.classList.add('active-layer');
 
   // remove active canvas styles
   selected_canvas.removeEventListener('pointerdown', handlePointerDown);
@@ -281,7 +333,7 @@ function update_selected_layer(e) {
   selected_canvas.classList.remove("active-canvas");
 
   // Id is stored in the layer wrapper parent element
-  const layerId = e.target.parentNode.dataset.layerId;
+  const layerId = element.parentNode.dataset.layerId;
 
   // remove pointer events for all children except the selected canvas
   const newActiveCanvas = document.querySelector(`[data-layer-id="${layerId}"]`);
@@ -307,19 +359,17 @@ function undo_history() {
   undone_history.push(removedItem);
 
   if (removedItem.type === "canvas-edit") {
-    for (let i = history.length -1; i >= 0; i--) {
-      const element = history[i];
-      if (element.type === removedItem.type) {
-        ctx.putImageData(element.data, 0, 0);
-        break;
-      }
-    }
+    // after removing the most recent item, we need to revert the canvas to the new
+    // top of the history canvas state
+    const prevState = history[history.length -1];
+    const canvasByID = document.querySelector(`[data-layer-id='${prevState.id}']`);
+    canvasByID.getContext("2d").putImageData(prevState.data, 0, 0);
   }
 
   if (removedItem.type === "add-new-layer") {
     remove_layer(removedItem.id);
   }
-
+  // opposite action as undo
   if (removedItem.type === "delete-layer") {
     add_new_layer(removedItem.data, removedItem.id);
   }
@@ -327,7 +377,6 @@ function undo_history() {
 }
 
 //----- redo history -----//
-// undo history by reverting to previous top of stack state
 function redo_history() {
   // do nothing if no history to undo
   if (undone_history.length === 0) return
@@ -342,7 +391,8 @@ function redo_history() {
   history.push(removedItem);
 
   if (removedItem.type === "canvas-edit") {
-    ctx.putImageData(removedItem.data, 0, 0);
+    const canvasByID = document.querySelector(`[data-layer-id='${removedItem.id}']`);
+    canvasByID.getContext("2d").putImageData(removedItem.data, 0, 0);
   }
 
   if (removedItem.type === "add-new-layer") {
@@ -368,16 +418,17 @@ function add_history_event(type, element) {
     history.push({
       type: type,
       data: current,
-      element: element,
       id: element.dataset.layerId
     });
   }
 
   if (type === "add-new-layer") {
+    console.log(element)
+    const currentctx = element.getContext("2d");
+    const current = currentctx.getImageData(0, 0, canvasWidth, canvasHeight);
     history.push({
       type: type,
-      data: null,
-      element: element,
+      data: current,
       id: element.dataset.layerId
     });
   }
@@ -390,7 +441,6 @@ function add_history_event(type, element) {
       history.push({
         type: type,
         data: deletedCanvasData,
-        element: element,
         id: element.dataset.layerId
       });
   }
