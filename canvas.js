@@ -1,12 +1,10 @@
-// canvas variables
+// canvas elements
 const currentLayer = document.querySelector('.active-layer');
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas;
 let ctx;
-let canvasHeight = 400;
+let canvasHeight = 500;
 let canvasWidth = 500;
-canvasLayers.style.width = `${canvasWidth}px`;
-canvasLayers.style.height = `${canvasHeight}px`;
 
 // top toolbar
 const fileIn = document.getElementById('imgInp');
@@ -15,7 +13,11 @@ const undoButton = document.querySelector('.undo-button');
 const redoButton = document.querySelector('.redo-button');
 const brushSizeButton = document.querySelector('.brushsize');
 const brushToolbar = document.querySelector('.toolbar-brushsize');
-const editToolbar = document.querySelector('.edit-dropdown');
+const showEditBtn = document.querySelector('.show-edit-dropdown');
+const dropdown = document.querySelector('.dropdown');
+const widthInput = document.querySelector('#width');
+const heightInput = document.querySelector('#height');
+const resizeCanvasBtn = document.querySelector('.resize-canvas-btn')
 
 // side toolbar
 const toolbarLeft = document.querySelector('.toolbar-left');
@@ -30,7 +32,9 @@ const eraserButton = document.querySelector('.eraser-button');
 const addLayerButton = document.querySelector('.add-layer-btn');
 const layerWrapper = document.querySelector('.layers-wrap');
 
-// options
+// default options
+widthInput.value = canvasWidth;
+heightInput.value = canvasHeight;
 const tools = ["brush", "pencil", "eraser", "bucket"];
 let current_tool = tools[0];
 let current_color = [0, 0, 0, 255];
@@ -43,10 +47,8 @@ const fill_tolerance = 40;
 
 // stores canvas image data for each action on a stack for undo/redo
 const history = [];
-const undone_history = []; // stores undone history for redo function
-// blank canvas and layer info is stored as default into history, 
-// any futures changes can be reverted to default
-const DEFAULT_HISTORY_ITEMS = 1;
+const undone_history = [];
+
 
 //------ CREATE INITIAL BLANK LAYER ------//
 const initalLayer = add_new_layer();
@@ -63,11 +65,11 @@ brushSizeButton.addEventListener('change', (e) => set_tool_size(e.target.value))
 colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
-editToolbar.addEventListener('click', () => {
-  if (editToolbar.children[1].classList.contains('show-dropdown')) {
-    editToolbar.children[1].classList.remove('show-dropdown')
+showEditBtn.addEventListener('click', () => {
+  if (dropdown.classList.contains('show-dropdown')) {
+    dropdown.classList.remove('show-dropdown')
   } else {
-    editToolbar.children[1].classList.add('show-dropdown')
+    dropdown.classList.add('show-dropdown')
   }
 });
 
@@ -96,7 +98,7 @@ function set_tool_size(size) {
   tool_size = size;
 
   // also update the cursor size
-  selected_canvas.style.cursor = create_custom_cursor(tool_size);
+  canvasLayers.style.cursor = create_custom_cursor(tool_size);
 }
 
 // Adds new canvas and layer element with matching id's
@@ -173,7 +175,7 @@ function add_new_layer(canvasData, id) {
 function toggle_hide_layer(hideBtn, id) {
   // swap between hidden or shown
   hideBtn.dataset.show === "true" ? hideBtn.dataset.show = "false" : hideBtn.dataset.show = "true";
-  const canvas = document.querySelector(`canvas, [data-layer-id='${id}']`);
+  const canvas = document.querySelector(`canvas[data-layer-id='${id}']`);
   canvas.style.display === "none" ? canvas.style.display = "block" : canvas.style.display = "none";
   const layerWrap = document.querySelector(`.layer[data-layer-id='${id}'] .layer-info`);
   hideBtn.dataset.show === "true" ? layerWrap.style.opacity = '1' : layerWrap.style.opacity = '.3'; 
@@ -297,10 +299,10 @@ function update_selected_tool(target) {
 
   // update cursor to appropriate type
   if (current_tool === "bucket") {
-    selected_canvas.style.cursor = 'crosshair';
+    canvasLayers.style.cursor = 'crosshair';
     brushToolbar.style.display = 'none';
   } else {
-    selected_canvas.style.cursor = create_custom_cursor(tool_size);
+    canvasLayers.style.cursor = create_custom_cursor(tool_size);
     brushToolbar.style.display = 'flex';
   }
 }
@@ -347,8 +349,8 @@ function update_selected_layer(element) {
 //----- undo history -----//
 // undo history by reverting to previous top of stack state
 function undo_history() {
-  // do nothing if no history to undo
-  if (history.length === DEFAULT_HISTORY_ITEMS) return
+  // history should always have default 1 item from creating inital canvas layer
+  if (history.length === 1) return
 
   // remove most recent and save for redo
   const removedItem = history.pop();

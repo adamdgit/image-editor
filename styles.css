@@ -81,7 +81,7 @@ canvas {
   align-items: center;
   justify-content: center;
   grid-column: 2;
-  gap: 10px;
+  gap: 1rem;
   width: 100%;
   height: 80px;
   border-bottom: 1px solid #999;
@@ -279,18 +279,18 @@ canvas {
 
 
 /* dropdown topbar */
-.edit-dropdown {
+.show-edit-dropdown {
   cursor: pointer;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
   width: 80px;
   height: 40px;
   border: 1px solid #ccc;
   background-color: #ededed;
 }
-.edit-dropdown:hover {
+
+.edit-dropdown {
+  position: relative;
+}
+.show-edit-dropdown:hover {
   background: white;
 }
 
@@ -304,10 +304,6 @@ canvas {
   position: absolute;
   left:0;
   top: 40px;
-  display: grid;
-  width: auto;
-  align-items: center;
-  justify-content: space-around;
 }
 
 .dropdown li {
