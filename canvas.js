@@ -1,5 +1,4 @@
 // canvas elements
-const currentLayer = document.querySelector('.active-layer');
 const canvasLayers = document.querySelector('.canvas-layers');
 let selected_canvas;
 let ctx;
@@ -51,14 +50,10 @@ const fill_tolerance = 40;
 const history = [];
 const undone_history = [];
 
-
 //------ CREATE INITIAL BLANK LAYER ------//
-const initalLayer = add_new_layer();
-const infoEl = initalLayer.querySelector('.layer-info');
-selected_canvas = document.querySelector(`[data-layer-id='${initalLayer.dataset.layerId}']`);
+add_new_layer(null, null);
+selected_canvas = document.querySelector(`canvas`); // only 1 canvas on start
 ctx = selected_canvas.getContext('2d', { willReadFrequently: true });
-update_selected_layer(infoEl);
-add_history_event("add-new-layer", selected_canvas);
 //----------------------------------------//
 
 // top toolbar
@@ -71,12 +66,7 @@ showEditBtn.addEventListener('click', () => toggle_showhide_btn());
 resizeCanvasBtn.addEventListener('click', () => update_canvas_size());
 
 // right toolbar
-addLayerButton.addEventListener('click', () => {
-  // creates a new canvas, gets the associated ID, to pass to history
-  const newLayer = add_new_layer();
-  const newCanvas = document.querySelector(`[data-layer-id='${newLayer.dataset.layerId}']`);
-  add_history_event("add-new-layer", newCanvas)
-})
+addLayerButton.addEventListener('click', () => add_new_layer(null, null));
 
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale());
@@ -165,17 +155,20 @@ function add_new_layer(canvasData, id) {
   if (canvasData) newCanvas.getContext("2d").putImageData(canvasData, 0, 0);
 
   canvasLayers.prepend(newCanvas);
-  return newLayer;
+  add_history_event("add-new-layer", newCanvas);
+  update_selected_layer(spanEl);
 }
 
 function update_canvas_size() {
-  console.log("size")
+  canvasLayers.style.width = `${widthInput.value}px`;
+  canvasLayers.style.height = `${heightInput.value}px`;
   canvasWidth = widthInput.value;
   canvasHeight = heightInput.value;
   [...document.querySelectorAll('canvas')].forEach(canvas => {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
   })
+  add_history_event("canvas-resize", null);
 }
 
 function toggle_showhide_btn() {
@@ -332,22 +325,18 @@ function highlight_selected_tool(target) {
 
 // Updates the CTX to the selected canvas
 function update_selected_layer(element) {
-  if (document.querySelector('.current-layer')) {
-    // swap current layer class to selected layer
-    document.querySelector('.current-layer').classList.remove('current-layer');
+  // set newly created element to current layer (highlighted)
+  const currentLayer = document.querySelector('.current-layer');
+  if (currentLayer) {
+    currentLayer.classList.remove('current-layer');
   }
   element.classList.add('current-layer');
 
-  if (document.querySelector('.active-layer')) {
-    // swap active layer class
-    document.querySelector('.active-layer').classList.remove('active-layer');
-  }
-  element.parentNode.classList.add('active-layer');
-
   // remove active canvas styles
-  selected_canvas.removeEventListener('pointerdown', handlePointerDown);
-  selected_canvas.style.pointerEvents = 'none';
-  selected_canvas.classList.remove("active-canvas");
+  if (selected_canvas) {
+    selected_canvas.removeEventListener('pointerdown', handlePointerDown);
+    selected_canvas.style.pointerEvents = 'none';
+  }
 
   // Id is stored in the layer wrapper parent element
   const layerId = element.parentNode.dataset.layerId;
@@ -436,6 +425,16 @@ function add_history_event(type, element) {
     history.shift();
   }
 
+  // element will be null for this type, as not needed
+  if (type === "canvas-resize") {
+    // TODO: handle canvas resize
+    history.push({
+      type: type,
+      data: [canvasWidth, canvasHeight], // store newly updated width and height of canvas
+      id: null
+    });
+  }
+
   if (type === "canvas-edit") {
     const currentctx = element.getContext("2d");
     const current = currentctx.getImageData(0, 0, canvasWidth, canvasHeight);
@@ -447,7 +446,6 @@ function add_history_event(type, element) {
   }
 
   if (type === "add-new-layer") {
-    console.log(element)
     const currentctx = element.getContext("2d");
     const current = currentctx.getImageData(0, 0, canvasWidth, canvasHeight);
     history.push({
