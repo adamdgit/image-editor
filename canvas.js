@@ -54,6 +54,9 @@ const undone_history = [];
 add_new_layer(null, null);
 selected_canvas = document.querySelector(`canvas`); // only 1 canvas on start
 ctx = selected_canvas.getContext('2d', { willReadFrequently: true });
+// default min history state
+add_history_event("canvas-resize", null);
+add_history_event("add-new-layer", selected_canvas);
 //----------------------------------------//
 
 // top toolbar
@@ -63,10 +66,17 @@ colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
 showEditBtn.addEventListener('click', () => toggle_showhide_btn());
-resizeCanvasBtn.addEventListener('click', () => update_canvas_size());
+resizeCanvasBtn.addEventListener('click', () => {
+  update_canvas_size();
+  add_history_event("canvas-resize", null);
+});
 
 // right toolbar
-addLayerButton.addEventListener('click', () => add_new_layer(null, null));
+addLayerButton.addEventListener('click', () => {
+  // return new canvas, when not reverting to previous canvas state via undo/redo
+  const newCanvas = add_new_layer(null, null);
+  add_history_event("add-new-layer", newCanvas);
+});
 
 // left toolbar
 gsButton.addEventListener('click', () => filter_grayscale());
@@ -155,20 +165,30 @@ function add_new_layer(canvasData, id) {
   if (canvasData) newCanvas.getContext("2d").putImageData(canvasData, 0, 0);
 
   canvasLayers.prepend(newCanvas);
-  add_history_event("add-new-layer", newCanvas);
   update_selected_layer(spanEl);
+  return newCanvas;
 }
 
 function update_canvas_size() {
+  // get width and height from the edit inputs
   canvasLayers.style.width = `${widthInput.value}px`;
   canvasLayers.style.height = `${heightInput.value}px`;
-  canvasWidth = widthInput.value;
-  canvasHeight = heightInput.value;
-  [...document.querySelectorAll('canvas')].forEach(canvas => {
+  canvasWidth = Number(widthInput.value);
+  canvasHeight = Number(heightInput.value);
+
+  [...canvasLayers.children].forEach(canvas => {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
-  })
-  add_history_event("canvas-resize", null);
+    const ctx2 = canvas.getContext("2d");
+
+    // find each canvas' previous state to rollback to
+    for (let i = history.length -1; i >= 0; i--) {
+      if (history[i].id === canvas.dataset.layerId) {
+        ctx2.putImageData(history[i].data, 0, 0);
+        break;
+      }
+    }
+  });
 }
 
 function toggle_showhide_btn() {
@@ -215,21 +235,32 @@ function remove_layer(layerId) {
   return true;
 }
 
+// revert the canvas
+function revert_canvas_state(id) {
+  // after removing the most recent item, we need to revert the canvas to the 
+  // previous state for that given canvas
+  const canvasByID = document.querySelector(`[data-layer-id='${id}']`);
+
+  // find the prev state of the canvasbyID, going backwards through the array
+  for (let i = history.length -1; i >= 0; i--) {
+    if (history[i].id === id) {
+      canvasByID.getContext("2d").putImageData(history[i].data, 0, 0);
+      break;
+    }
+  }
+}
+
 // update tool size and create a custom svg for users cursor based on size
 function create_custom_cursor(size) {
-  // brush needs a circle svg cursor, eraser and pencil need square cursor
-  const type = current_tool === "brush" ? "circle" : "square";
-
   let svg;
-  if (type === "circle") {
+  // brush has a circle cursor, other tools have square
+  if (current_tool === "brush") {
     svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${size * 2}" height="${size * 2}" viewBox="0 0 ${size * 2} ${size * 2}">
         <circle cx="${size}" cy="${size}" r="${size - 1}" fill="none" stroke="cyan" stroke-width="2" />
       </svg>
     `;
-  }
-
-  if (type === "square") {
+  } else {
     svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${size * 2}" height="${size * 2}" viewBox="0 0 ${size * 2} ${size * 2}">
         <rect x="${size / 2}" y="${size / 2}" width="${size}" height="${size}" fill="none" stroke="cyan" stroke-width="2" />
@@ -332,7 +363,7 @@ function update_selected_layer(element) {
   }
   element.classList.add('current-layer');
 
-  // remove active canvas styles
+  // remove active canvas styles, there can be no selected canvas
   if (selected_canvas) {
     selected_canvas.removeEventListener('pointerdown', handlePointerDown);
     selected_canvas.style.pointerEvents = 'none';
@@ -354,7 +385,7 @@ function update_selected_layer(element) {
 // undo history by reverting to previous top of stack state
 function undo_history() {
   // history should always have default 1 item from creating inital canvas layer
-  if (history.length === 1) return
+  if (history.length === 2) return
 
   // remove most recent and save for redo
   const removedItem = history.pop();
@@ -364,19 +395,20 @@ function undo_history() {
   }
   undone_history.push(removedItem);
 
-  if (removedItem.type === "canvas-edit") {
-    // after removing the most recent item, we need to revert the canvas to the new
-    // top of the history canvas state
-    const canvasByID = document.querySelector(`[data-layer-id='${removedItem.id}']`);
-
-    // find the prev state of the canvasbyID, which could be further back in the history
+  if (removedItem.type === "canvas-resize") {
+    // find last canvas size, revert to that state
     for (let i = history.length -1; i >= 0; i--) {
-      if (history[i].id === removedItem.id) {
-        canvasByID.getContext("2d").putImageData(history[i].data, 0, 0);
+      if (history[i].type === "canvas-resize") {
+        widthInput.value = history[i].data[0];
+        heightInput.value = history[i].data[1];
+        update_canvas_size(removedItem.id);
         break;
       }
     }
+  }
 
+  if (removedItem.type === "canvas-edit") {
+    revert_canvas_state(removedItem.id);
   }
 
   if (removedItem.type === "add-new-layer") {
@@ -386,7 +418,7 @@ function undo_history() {
   if (removedItem.type === "delete-layer") {
     add_new_layer(removedItem.data, removedItem.id);
   }
-  console.log("remove: ", history)
+  console.log("undo: ", history)
 }
 
 //----- redo history -----//
@@ -403,6 +435,12 @@ function redo_history() {
   }
   history.push(removedItem);
 
+  if (removedItem.type === "canvas-resize") {
+    widthInput.value = removedItem.data[0];
+    heightInput.value = removedItem.data[1];
+    update_canvas_size();
+  }
+
   if (removedItem.type === "canvas-edit") {
     const canvasByID = document.querySelector(`[data-layer-id='${removedItem.id}']`);
     canvasByID.getContext("2d").putImageData(removedItem.data, 0, 0);
@@ -415,7 +453,7 @@ function redo_history() {
   if (removedItem.type === "delete-layer") {
     remove_layer(removedItem.id);
   }
-  console.log("add:", history)
+  console.log("redo:", history)
 }
 
 //----- add to history stack -----//
@@ -425,9 +463,7 @@ function add_history_event(type, element) {
     history.shift();
   }
 
-  // element will be null for this type, as not needed
   if (type === "canvas-resize") {
-    // TODO: handle canvas resize
     history.push({
       type: type,
       data: [canvasWidth, canvasHeight], // store newly updated width and height of canvas
@@ -456,10 +492,8 @@ function add_history_event(type, element) {
   }
 
   if (type === "delete-layer") {
-      // get canvas associated with deleted layer
       const deletedctx = element.getContext("2d");
       const deletedCanvasData = deletedctx.getImageData(0, 0, canvasWidth, canvasHeight);
-      // remove_layer(element.dataset.layerId)
       history.push({
         type: type,
         data: deletedCanvasData,
