@@ -46,39 +46,39 @@ const remove_svg = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" 
 // 0 = RGB values must match completely, higher means RGB values can vary to get better fill results
 const fill_tolerance = 40;
 
-// stores canvas image data for each action on a stack for undo/redo
+// Stores undo/redo events data
 const history = [];
 const undone_history = [];
 
-//------ CREATE INITIAL BLANK LAYER ------//
+//------------------------ CREATE INITIAL BLANK LAYER ------------------------//
 add_new_layer(null, null);
 selected_canvas = document.querySelector(`canvas`); // only 1 canvas on start
 ctx = selected_canvas.getContext('2d', { willReadFrequently: true });
-// default min history state
+// default state for undo/redo
 add_history_event("canvas-resize", null);
 add_history_event("add-new-layer", selected_canvas);
-//----------------------------------------//
+//----------------------------------------------------------------------------//
 
-// top toolbar
+// top toolbar click handlers
 fileIn.addEventListener('change', () => user_image_upload());
 brushSizeButton.addEventListener('change', (e) => set_tool_size(e.target.value));
 colorPicker.addEventListener('change', (e) => set_current_color(e));
 undoButton.addEventListener('click', () => undo_history());
 redoButton.addEventListener('click', () => redo_history());
-showEditBtn.addEventListener('click', () => toggle_showhide_btn());
+showEditBtn.addEventListener('click', () => dropdown.classList.toggle('show-dropdown'));
 resizeCanvasBtn.addEventListener('click', () => {
   update_canvas_size();
   add_history_event("canvas-resize", null);
 });
 
-// right toolbar
+// right toolbar click handlers
 addLayerButton.addEventListener('click', () => {
   // return new canvas, when not reverting to previous canvas state via undo/redo
   const newCanvas = add_new_layer(null, null);
   add_history_event("add-new-layer", newCanvas);
 });
 
-// left toolbar
+// left toolbar click handlers
 gsButton.addEventListener('click', () => filter_grayscale());
 sepiaButton.addEventListener('click', () => filter_sepia());
 mirrorHButtonH.addEventListener('click', () => mirror_image_horizontal());
@@ -176,12 +176,14 @@ function update_canvas_size() {
   canvasWidth = Number(widthInput.value);
   canvasHeight = Number(heightInput.value);
 
+  // get each existing canvas and update their sizes
   [...canvasLayers.children].forEach(canvas => {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     const ctx2 = canvas.getContext("2d");
 
-    // find each canvas' previous state to rollback to
+    // changing the canvas size, clears the canvas
+    // so we need to find the current imageData to redraw after resizing
     for (let i = history.length -1; i >= 0; i--) {
       if (history[i].id === canvas.dataset.layerId) {
         ctx2.putImageData(history[i].data, 0, 0);
@@ -189,14 +191,6 @@ function update_canvas_size() {
       }
     }
   });
-}
-
-function toggle_showhide_btn() {
-  if (dropdown.classList.contains('show-dropdown')) {
-    dropdown.classList.remove('show-dropdown')
-  } else {
-    dropdown.classList.add('show-dropdown')
-  }
 }
 
 // hide layer by given id
@@ -502,7 +496,6 @@ function add_history_event(type, element) {
   }
   console.log("add:", history)
 }
-
 
 function use_brush(x, y) {
   ctx.beginPath();
