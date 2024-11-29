@@ -298,6 +298,7 @@ canvas {
   z-index: 999;
   background: white;
   border: 1px solid #ccc;
+  box-shadow: 0 5px 10px 0 #ccc;
   list-style: none;
   opacity: 0;
   pointer-events: none;
